@@ -21,6 +21,9 @@ conda env create -f env.yaml
 conda activate PHACT-miRBind
 ```
 
+The ```run_msa.sh script``` annotates the dataset, downloads precursor orthologs and runs multiple sequence alignments. 
+The ```run_iqtree.sh``` script creates ML trees.
+
 Required packages:
 - Python 3.8+
 - pandas
