@@ -2,6 +2,10 @@
 
 This pipeline analyzes miRNA evolutionary relationships through multiple sequence alignment and phylogenetic tree construction.
 
+Clone the repository and download the human mirna dataset (manakov_positives.tsv):
+
+https://drive.google.com/drive/folders/14p99NI1y7rHrbHucbiIQMpqtYNTpuoMP
+
 ## Dependencies
 
 First set up the conda environment with the env.yaml file:
