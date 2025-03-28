@@ -54,7 +54,7 @@ The `noncodingRNA` column contains the mature miRNA sequence.
 ### 1. Dataset Annotation
 **Script**: `evo_scripts/annotate_dataset.py`
 
-Maps miRNA sequences to miRGeneDB IDs and adds family information. While the input data uses miRBase-style annotations, we convert to miRGeneDB IDs because miRGeneDB provides better evolutionary annotations.
+Maps miRNA sequences to miRGeneDB IDs and adds family information. While the input data uses miRBase annotations, we convert to miRGeneDB IDs because miRGeneDB provides better evolutionary annotations.
 
 **New Columns Added**:
 | Column          | Description                        | Example           |
