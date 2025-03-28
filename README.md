@@ -2,9 +2,15 @@
 
 This pipeline analyzes miRNA evolutionary relationships through multiple sequence alignment and phylogenetic tree construction.
 
-Clone the repository and download the human mirna dataset (manakov_positives.tsv):
+First clone the repo and cd into it. Download the dataset file (manakov_positives.tsv) from:
 
-https://drive.google.com/drive/folders/14p99NI1y7rHrbHucbiIQMpqtYNTpuoMP
+https://drive.google.com/drive/folders/14p99NI1y7rHrbHucbiIQMpqtYNTpuoMP?usp=sharing
+
+Give exec permissions to sh scripts:
+
+```
+chmod +x run_msa.sh run_iqtree.sh evo_scripts/run_alignment.sh
+```
 
 ## Dependencies
 
