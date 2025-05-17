@@ -51,7 +51,11 @@ def get_id_char(num):
         # Use letters for numbers > 9: a=10, b=11, etc.
         return chr(ord('a') + (num - 10))
 
-def process_precursors(input_dir, output_dir, mature_db):
+def trim_flanking_regions(sequence, flank_size=30):
+    # trim flanking regions of specified size from both ends of the sequence
+    return sequence[flank_size:-flank_size]
+
+def process_precursors(input_dir, output_dir, mature_db, flank_size=30):
     os.makedirs(output_dir, exist_ok=True)
     
     #  delete "chunks" subfolder if it exists
@@ -92,7 +96,8 @@ def process_precursors(input_dir, output_dir, mature_db):
                 print(f"  Processing: {precursor_dir}/{fasta_file}")
                 
                 for rec in SeqIO.parse(input_path, 'fasta'):
-                    full_sequence = str(rec.seq).upper()
+                    original_sequence = str(rec.seq).upper()
+                    full_sequence = trim_flanking_regions(original_sequence, flank_size)
                     header = rec.description
                     seq_len = len(full_sequence)
                     
@@ -160,6 +165,7 @@ if __name__ == "__main__":
     parser.add_argument('--input', required=True, help='Input directory with precursor FASTA directories')
     parser.add_argument('--output', required=True, help='Output directory for annotated precursors')
     parser.add_argument('--mature', required=True, help='FASTA file with mature 5p/3p sequences')
+    parser.add_argument('--flank_size', type=int, default=30, help='Size of flanking regions to trim from each end (default: 30)')
     args = parser.parse_args()
 
     try:
@@ -172,6 +178,6 @@ if __name__ == "__main__":
     mature_db = parse_mature_sequences(args.mature)
     
     print("\nProcessing precursors...")
-    process_precursors(args.input, args.output, mature_db)
+    process_precursors(args.input, args.output, mature_db, flank_size=args.flank_size)
     
     print("\nAnnotation complete! Output directory:", args.output)
