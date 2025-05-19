@@ -1,0 +1,44 @@
+import ast
+
+configfile: "../config/config_orthologs.yaml"
+workdir: config["workdir"]
+config["result_dir"] = f"{config['workdir']}/{config['score_result_dirname']}"
+
+
+include: "rules/edit_aln.smk"
+include: "rules/unroot_tree.smk"
+include: "rules/ancestral_reconstruction.smk"
+include: "rules/score_calculation.smk"
+include: "rules/score_calculation_woDiv.smk"
+
+query_ids_file = config["query_ids_file"]
+with open(query_ids_file) as f:
+    query_ids = [line.strip() for line in f if line.strip()]
+
+rule all:
+    input:
+        expand(
+            "{result_dir}/{query_id}/4_iqtree_ancestral_scores/{query_id}_wol_param_{pattern}.csv",
+            result_dir=config["result_dir"],
+            query_id=query_ids,
+            pattern=config["pattern"]
+        ),
+        expand(
+            "{result_dir}/{query_id}/4_iqtree_ancestral_scores/{query_id}_wl_param_{pattern}.csv",
+            result_dir=config["result_dir"],
+            query_id=query_ids,
+            pattern=config["pattern"]
+        ),
+        # Without diversity scores
+        expand(
+            "{result_dir}/{query_id}/5_iqtree_ancestral_scores_woDiv/{query_id}_wol_param_{pattern}.csv",
+            result_dir=config["result_dir"],
+            query_id=query_ids,
+            pattern=config["pattern"]
+        ),
+        expand(
+            "{result_dir}/{query_id}/5_iqtree_ancestral_scores_woDiv/{query_id}_wl_param_{pattern}.csv",
+            result_dir=config["result_dir"],
+            query_id=query_ids,
+            pattern=config["pattern"]
+        )

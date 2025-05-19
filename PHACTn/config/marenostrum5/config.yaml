@@ -1,0 +1,4 @@
+default-resources: [cpus=100, mem_mb=100000, disk_mb=100000]
+executor: "cluster-generic"
+cluster-generic-submit-cmd: "sbatch -A etur11 --qos gp_ehpc --nodes=1 -t 3-00:00:00 -J {rule}.job --cpus-per-task={resources.cpus} -o /gpfs/projects/etur11/workflow/logs/logs_sbatch/{rule}_%A.out -e /gpfs/projects/etur11/workflow/logs/logs_sbatch/{rule}_%A.err" 
+#software-deployment-method: "conda"

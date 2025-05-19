@@ -1,0 +1,18 @@
+configfile: "config/config.yaml"
+workdir: "../workflow_orthologs"
+query_ids_file: "hs_mirna.txt"
+score_result_dirname: "result_orthologsNoFlanking"
+
+# alignment and ML trees path
+alignment_pattern: "../../alignmentResults_noFlanking/no_flanking_alignments_filtered/{query_id}_precursor_annotated.aln"
+MLtree_file_pattern: "../../alignmentResults_noFlanking/iqtree_out/{query_id}_precursor_annotated/{query_id}_precursor_annotated.treefile"
+
+
+# IQ-TREE
+iqtree_ancestral_model: "scripts/notr_model.txt"
+iqtree_seed: "777"
+
+
+#SCORE CALCULATION
+weights: "0.1,0.5,0,1,2,3,5,mean,median,X,CountNodes_1,CountNodes_2,CountNodes_3,CountNodes_4,0_MinNode_Mix,0_MinNode_Mix2"
+pattern: ["CountNodes_3"]
