@@ -332,7 +332,7 @@ The [X] in filenames reflects the parameter weighting scheme (e.g., max05, mean,
 
 The parameters in PHACTn control how the pipeline weighs phylogenetic information when calculating the functional impact of nucleotide substitutions.
 
-Passed via args[6] (comma-separated for multiple runs, e.g., "0,mean,CountNodes_3").
+Passed via args[6] (comma-separated for multiple runs)
 
 **Inverse-Distance Weights:** `0`, `0_MinNode`, `0_MinNode_Mix`, `0_MinNode_Mix2`
 
