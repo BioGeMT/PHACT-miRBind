@@ -37,7 +37,9 @@ There are two pipelines in the directory `workflow_orthologs` for alignments cre
 
 ![PHACTn Workflow orthologs](images/WGA_workflow.png)
 
-**1) Configure your workflow:** Edit `config/config_orthologs.yaml` and `config/config_WGA.yaml` to set paths, filenames, and parameters.
+**1) Configure your workflow:** 
+
+Edit `config/config_orthologs.yaml` and `config/config_WGA.yaml` to set paths, filenames, and parameters.
 
 ###### Field descriptions:
 
@@ -234,13 +236,13 @@ Computes scores without diversity correction.
 🛠 Script Used: `scripts/computescores_woDiv.R`
 _____________________
 
-### workflow_WGA
+### workflow_WGA:
 
 ### 🔧 Rules
 
 #### 🟠`edit_WGA`
 
-* Filters and prepares a UCSC multi-species alignment (MSA) for ancestral state reconstruction:
+Filters and prepares a UCSC multi-species alignment (MSA) for ancestral state reconstruction:
 
 * Removes sequences that consist entirely of gaps
 
@@ -313,3 +315,136 @@ Computes site-wise scores with diversity weighting using probabilistic ancestral
 `{query_id}/3_iqtree_ancestral_scores/{query_id}_wol_param_{pattern}.csv`
 
 🛠 Script Used: `scripts/computescores.R`
+
+____________
+
+### Score Files Description
+
+The `scripts/computescores.R` script generates two types of score files for each parameter setting, distinguished by their suffixes:
+
+_wl_param_[X].csv: Scores with leaf contributions (weighted by evolutionary distance and topology, namely, full evolutionary context).
+
+_wol_param_[X].csv: Scores without leaf contributions (Focus on ancestral nodes only).
+
+The [X] in filenames reflects the parameter weighting scheme (e.g., max05, mean, CountNodes_3)
+
+#### Parameter Options
+
+The parameters in PHACTn control how the pipeline weighs phylogenetic information when calculating the functional impact of nucleotide substitutions.
+
+Passed via args[6] (comma-separated for multiple runs, e.g., "0,mean,CountNodes_3").
+
+**Inverse-Distance Weights:**
+
+`0` (Default)
+
+Logic: Weights = 1 / (normalized_distance + 1)
+
+Normalizes distances by the minimum leaf distance (excluding human).
+
+
+`0_MinNode`
+
+Similar to 0, but normalizes by the minimum node distance (not leaves).
+
+`0_MinNode_Mix` / `0_MinNode_Mix2`
+
+Hybrid of inverse-distance and Gaussian weights:
+
+Combines 1/distance and exp(-distance²/mean²).
+
+Mix2 applies weaker Gaussian damping.
+
+**Gaussian Weights**
+
+`mean`
+
+Weights = exp(-distance² / mean_distance²)
+
+Bandwidth = mean of all distances.
+
+`median`
+
+Like mean, but uses median distance as bandwidth.
+
+`X`
+
+Adjusts for minimum distance offset:
+
+Weights = exp(-(distance - min_distance)²) / 2
+
+Human leaf weight fixed to 1.
+
+`Custom Value (e.g., 0.5)`
+
+User-defined bandwidth:
+
+Weights = exp(-distance² / custom_parameter²)
+
+**Topology-Aware Weights**
+
+Incorporates the number of nodes between a branch and the human reference:
+
+`CountNodes_1`
+
+Weights = (exp(-distance²) + 1/nodes_conn) / 2
+
+Balances distance and node count (simpler).
+
+`CountNodes_2`
+
+Weights = (exp(-distance²) + exp(-nodes_conn²)) / 2
+
+Smooths node-count influence.
+
+`CountNodes_3`
+
+Weights = sqrt(exp(-distance²) * (1/nodes_conn))
+
+Geometric mean of distance and node count.
+
+`CountNodes_4`
+
+Weights = exp(-(sqrt(distance * nodes_conn))²)
+
+Penalizes long paths with many nodes.
+
+**Special Cases**
+
+`Equal`
+
+Uniform weights (1.0 for all branches).
+
+`MinThreshold`
+
+Linear weights ensuring a user-defined minimum (param_min):
+
+Weights = (-1 + param_min)/max_distance * distance + 1
+
+`MinThreshold_Gauss`
+
+Gaussian version of MinThreshold.
+
+#### Output File Structure
+
+Both files are CSV tables with the same format:
+
+| Pos/NT | A         | T         | G         | C         |
+|--------|-----------|-----------|-----------|-----------|
+| 1      | `score_A` | `score_T` | `score_G` | `score_C` |
+| 2      | `...`     | `...`     | `...`     | `...`     |
+
+`Pos/NT:` Genomic position (1-based).
+
+`Columns A/T/G/C:` Scores for each possible nucleotide state at that position.
+
+#### Score Interpretation
+
+* Scores are normalized between 0 and 1.
+
+* Lower values indicate stronger predicted functional impact (more "deleterious").
+
+
+### References
+
+Kuru, N., Dereli, O., Akkoyun, E., Bircan, A., Tastan, O., & Adebali, O. (2022). PHACT: Phylogeny-aware computing of tolerance for missense mutations. Molecular Biology and Evolution. https://doi.org/10.1093/molbev/msac114
