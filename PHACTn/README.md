@@ -334,96 +334,14 @@ The parameters in PHACTn control how the pipeline weighs phylogenetic informatio
 
 Passed via args[6] (comma-separated for multiple runs, e.g., "0,mean,CountNodes_3").
 
-**Inverse-Distance Weights:**
+**Inverse-Distance Weights:** `0`, `0_MinNode`, `0_MinNode_Mix`, `0_MinNode_Mix2`
 
-`0` (Default)
+**Gaussian Weights:** `mean`, `median`, `X`, `Custom Value (e.g., 0.5)`, 
 
-Logic: Weights = 1 / (normalized_distance + 1)
+**Topology-Aware Weights:** `CountNodes_1`, `CountNodes_2`, `CountNodes_3`, `CountNodes_4`
 
-Normalizes distances by the minimum leaf distance (excluding human).
+**Special Cases:** `Equal`, `MinThreshold`, `MinThreshold_Gauss`
 
-
-`0_MinNode`
-
-Similar to 0, but normalizes by the minimum node distance (not leaves).
-
-`0_MinNode_Mix` / `0_MinNode_Mix2`
-
-Hybrid of inverse-distance and Gaussian weights:
-
-Combines 1/distance and exp(-distance²/mean²).
-
-Mix2 applies weaker Gaussian damping.
-
-**Gaussian Weights**
-
-`mean`
-
-Weights = exp(-distance² / mean_distance²)
-
-Bandwidth = mean of all distances.
-
-`median`
-
-Like mean, but uses median distance as bandwidth.
-
-`X`
-
-Adjusts for minimum distance offset:
-
-Weights = exp(-(distance - min_distance)²) / 2
-
-Human leaf weight fixed to 1.
-
-`Custom Value (e.g., 0.5)`
-
-User-defined bandwidth:
-
-Weights = exp(-distance² / custom_parameter²)
-
-**Topology-Aware Weights**
-
-Incorporates the number of nodes between a branch and the human reference:
-
-`CountNodes_1`
-
-Weights = (exp(-distance²) + 1/nodes_conn) / 2
-
-Balances distance and node count (simpler).
-
-`CountNodes_2`
-
-Weights = (exp(-distance²) + exp(-nodes_conn²)) / 2
-
-Smooths node-count influence.
-
-`CountNodes_3`
-
-Weights = sqrt(exp(-distance²) * (1/nodes_conn))
-
-Geometric mean of distance and node count.
-
-`CountNodes_4`
-
-Weights = exp(-(sqrt(distance * nodes_conn))²)
-
-Penalizes long paths with many nodes.
-
-**Special Cases**
-
-`Equal`
-
-Uniform weights (1.0 for all branches).
-
-`MinThreshold`
-
-Linear weights ensuring a user-defined minimum (param_min):
-
-Weights = (-1 + param_min)/max_distance * distance + 1
-
-`MinThreshold_Gauss`
-
-Gaussian version of MinThreshold.
 
 #### Output File Structure
 
