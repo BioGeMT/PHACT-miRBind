@@ -32,17 +32,13 @@ echo "Step 5b: Running DEFAULT alignments..."
 evo_scripts/run_alignment.sh output/annotated_primary output/alignments_primary_default 64 "--struct-weight=200 --indel=-150 --indel-opening=-750"
 evo_scripts/run_alignment.sh output/annotated_precursor output/alignments_precursor_default 64 "--struct-weight=200 --indel=-150 --indel-opening=-750"
 
-# Relaxed parameters (permissive)
-echo "Step 5c: Running RELAXED alignments..."
-evo_scripts/run_alignment.sh output/annotated_primary output/alignments_primary_relaxed 64 "--struct-weight=100 --indel=-100 --indel-opening=-500"
-evo_scripts/run_alignment.sh output/annotated_precursor output/alignments_precursor_relaxed 64 "--struct-weight=100 --indel=-100 --indel-opening=-500"
-
 # Step 6: Process alignments and create filtered output directories
 echo "Step 6: Processing and filtering alignments..."
+
 python evo_scripts/get_alignments.py --input output/alignments_primary_conservative --output output/filtered_alignments_primary_conservative
 python evo_scripts/get_alignments.py --input output/alignments_primary_default --output output/filtered_alignments_primary_default
-python evo_scripts/get_alignments.py --input output/alignments_primary_relaxed --output output/filtered_alignments_primary_relaxed
+
 python evo_scripts/get_alignments.py --input output/alignments_precursor_conservative --output output/filtered_alignments_precursor_conservative
 python evo_scripts/get_alignments.py --input output/alignments_precursor_default --output output/filtered_alignments_precursor_default
-python evo_scripts/get_alignments.py --input output/alignments_precursor_relaxed --output output/filtered_alignments_precursor_relaxed
+
 

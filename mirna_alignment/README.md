@@ -93,7 +93,7 @@ GGGUCUGUCCACCUGCCGCGCCCCCCGGGCUGAGGUAGGAGGUUGUAUAGUUGAGGAGGACACCCAAGGAGAUCACUAUA
 ### 4. Multiple Sequence Alignment
 **Script**: `evo_scripts/run_alignment.sh`
 
-Performs structure-aware alignments using MLocARNA with three parameter sets:
+Performs structure-aware alignments using MLocARNA with two parameter sets:
 
 **Conservative Parameters (Stricter)**:
 - `--struct-weight=300` (emphasizes structure over sequence)
@@ -101,12 +101,8 @@ Performs structure-aware alignments using MLocARNA with three parameter sets:
 - `--min-prob=0.005` (higher probability threshold)
 
 **Default Parameters (Balanced)**:
-- `--struct-weight=200` (LocARNA default)
-- `--indel=-150`, `--indel-opening=-750` (LocARNA default)
-
-**Relaxed Parameters (Permissive)**:
-- `--struct-weight=100` (emphasizes sequence over structure)
-- `--indel=-100`, `--indel-opening=-500` (permissive gap penalties)
+- `--struct-weight=200` (balanced structure/sequence weighting)
+- `--indel=-150`, `--indel-opening=-750` (moderate gap penalties)
 
 **Base MLocARNA Parameters**:
 - `--consensus-structure=alifold`: Uses Vienna RNAalifold
@@ -136,8 +132,8 @@ This single script runs the complete pipeline:
 1. Annotates dataset with miRGeneDB IDs
 2. Retrieves orthologous sequences (primary and precursor)
 3. Annotates sequences with secondary structure
-4. Runs alignments with all 6 parameter combinations:
-   - 3 parameter sets × 2 sequence types (primary/precursor)
+4. Runs alignments with 4 parameter combinations:
+   - 2 parameter sets × 2 sequence types (primary/precursor)
 5. Processes and filters alignments
 
 ## Output Structure
@@ -152,16 +148,12 @@ output/
 ├── annotated_precursor/                      # Annotated precursor sequences
 ├── alignments_primary_conservative/          # Conservative alignments (primary)
 ├── alignments_primary_default/               # Default alignments (primary)
-├── alignments_primary_relaxed/               # Relaxed alignments (primary)
 ├── alignments_precursor_conservative/        # Conservative alignments (precursor)
 ├── alignments_precursor_default/             # Default alignments (precursor)
-├── alignments_precursor_relaxed/             # Relaxed alignments (precursor)
 ├── filtered_alignments_primary_conservative/ # Filtered conservative alignments (primary)
 ├── filtered_alignments_primary_default/      # Filtered default alignments (primary)
-├── filtered_alignments_primary_relaxed/      # Filtered relaxed alignments (primary)
 ├── filtered_alignments_precursor_conservative/ # Filtered conservative alignments (precursor)
-├── filtered_alignments_precursor_default/    # Filtered default alignments (precursor)
-└── filtered_alignments_precursor_relaxed/    # Filtered relaxed alignments (precursor)
+└── filtered_alignments_precursor_default/    # Filtered default alignments (precursor)
 ```
 
 ## Directory Structure
@@ -184,7 +176,7 @@ output/
 ## Features
 
 - **Silent Execution**: All scripts run without verbose output or error messages
-- **Multiple Parameter Sets**: Tests different alignment stringency levels
+- **Multiple Parameter Sets**: Tests conservative and default alignment stringency levels
 - **Comprehensive Monitoring**: Detailed alignment success/failure statistics
 - **Parallel Processing**: Efficient multi-core processing (64 workers by default)
 - **Clean Output**: Organized results with clear naming conventions
@@ -196,7 +188,7 @@ The pipeline produces:
 - Annotated miRNA dataset with miRGeneDB mappings
 - Orthologous precursor sequences from multiple species
 - Structure-annotated sequences
-- Multiple sequence alignments with 6 different parameter combinations
+- Multiple sequence alignments with 4 different parameter combinations
 - Filtered alignments ready for downstream analysis
 - Comprehensive alignment statistics and success rates
 
