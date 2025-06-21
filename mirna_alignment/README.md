@@ -6,11 +6,6 @@ First clone the repo and cd into it. Download the dataset file (manakov_positive
 
 https://drive.google.com/drive/folders/14p99NI1y7rHrbHucbiIQMpqtYNTpuoMP?usp=sharing
 
-Give exec permissions to sh scripts:
-
-```
-chmod +x run_msa.sh run_iqtree.sh evo_scripts/run_alignment.sh
-```
 
 ## Dependencies
 
@@ -18,11 +13,10 @@ First set up the conda environment with the env.yaml file:
 
 ```
 conda env create -f env.yaml
-conda activate PHACT-miRBind
+conda activate align_phact-mirbind
 ```
 
-The ```run_msa.sh script``` annotates the dataset, downloads precursor orthologs and runs multiple sequence alignments. 
-The ```run_iqtree.sh``` script creates ML trees.
+The `run_msa.sh` script runs the complete alignment pipeline with multiple parameter sets.
 
 Required packages:
 - Python 3.8+
@@ -30,7 +24,6 @@ Required packages:
 - BioPython
 - ViennaRNA
 - LocARNA
-- IQ-TREE
 - BeautifulSoup4
 - tqdm, requests
 
@@ -63,7 +56,7 @@ The `noncodingRNA` column contains the mature miRNA sequence.
 ### 1. Dataset Annotation
 **Script**: `evo_scripts/annotate_dataset.py`
 
-Maps miRNA sequences to miRGeneDB IDs and adds family information. While the input data uses miRBase annotations, we convert to miRGeneDB IDs because miRGeneDB provides better evolutionary annotations.
+Maps miRNA sequences to miRGeneDB IDs and adds family information.
 
 **New Columns Added**:
 | Column          | Description                        | Example           |
@@ -72,34 +65,22 @@ Maps miRNA sequences to miRGeneDB IDs and adds family information. While the inp
 | mirgenedb_id    | Precursor miRGeneDB entry name     | Hsa-Let-7-P1d     |
 | mirgenedb_fam   | miRGeneDB family name              | Let-7             |
 
-**Options**:
-- `--fasta`: Input FASTA with mature miRNA sequences
-- `--tsv`: Input TSV file
-- `--mirgenedb`: miRGeneDB family mappings
-- `--output`: Output file
+### 2. Ortholog Retrieval
+**Script**: `evo_scripts/get_orthologues.py`
 
-### 2. Precursor Sequence Retrieval
-**Script**: `evo_scripts/scrape_parallel.py`
+Retrieves precursor sequences and orthologs from miRGeneDB. Creates separate folders for primary (with flanking) and precursor (without flanking) sequences.
 
-Retrieves precursor sequences and orthologs from miRGeneDB.
-
+**Output Structure**:
 ```
->Hsa-Let-7-P1b
-GGGUCUGUCCACCUGCCGCGCCCCCCGGGCUGAGGUAGGAGGUUGUAUAGUUGAGGAGGACACCCAAGGAGAUCACUAUACGGCCUCCUAGCUUUCCCCAGGCUGCGCCCUGCACGGGACGGGGCCC
->Bta-Let-7-P1b
-CUGUCUGUCCACCUGCCGCGCCCCCCGGGCUGAGGUAGGAGGUUGUAUAGUUGAGGAGGACACCCAAGGAGAUCACUAUACGGCCUCCUAGCUUUCCCCAGGCUGCGCCCUGCACGGGACGGCCCGG
-
+output/orthologues/
+├── primary/          # Primary sequences with flanking regions
+└── precursor/        # Precursor sequences with _pre suffix
 ```
 
-**Options**:
-- `--input`: Annotated TSV file
-- `--output_folder`: Output directory
-- `--workers`: Number of cpus
-
-### 3. Precursor Annotation
+### 3. Structure Annotation
 **Script**: `evo_scripts/annotate_precursors.py`
 
-Adds secondary structure predictions and marks mature miRNA locations.
+Adds secondary structure predictions and marks mature miRNA locations for both primary and precursor sequences.
 
 ```
 >Hsa-Let-7-P1b
@@ -107,109 +88,115 @@ GGGUCUGUCCACCUGCCGCGCCCCCCGGGCUGAGGUAGGAGGUUGUAUAGUUGAGGAGGACACCCAAGGAGAUCACUAUA
 ((.(((((((.(.(((.((((..((.(((..(((.((((((((((((((((.((((.(....))).......)))))))))))))))))).)))..))).))..))))...))).)))))))).)). #S
 ..............................AAAAAAAAAAAAAAAAAAAAAA.......................BBBBBBBBBBBBBBBBBBBBBB.............................. #1
 ..............................123456789abcdefghijklm.......................123456789abcdefghijklm.............................. #2
-
 ```
-
-**Options**:
-- `--input`: Input directory with precursor files
-- `--output`: Output directory
-- `--mature`: FASTA with mature sequences
 
 ### 4. Multiple Sequence Alignment
 **Script**: `evo_scripts/run_alignment.sh`
 
-Performs structure-aware alignments using MLocARNA on precursor sets.
+Performs structure-aware alignments using MLocARNA with three parameter sets:
 
-```
-CLUSTAL W --- LocARNA 2.0.1
+**Conservative Parameters (Stricter)**:
+- `--struct-weight=300` (emphasizes structure over sequence)
+- `--indel=-200`, `--indel-opening=-1000` (strict gap penalties)
+- `--min-prob=0.005` (higher probability threshold)
 
-Hsa-Let-7-P1b      ------GGGUCUGUCCACC-UGC-C----GCGCCC--------CC----CGGG-CUGAGGUAGGAGGUUGUAUAGUUGAGGA--GGA-------------------------------------------------------------CACC-C----AAGGAG---------A---------------------------------------------------UCA-CUAUACGGCCUCCUAGCUUUCC-C-CA-G----G---CUGC---------GCC-CUGCACGGGACGGGGCCC------
-Bta-Let-7-P1b      ------CUGUCUGUCCACC-UGC-C----GCGCCC--------CC----CGGG-CUGAGGUAGGAGGUUGUAUAGUUGAGGA--GGA-------------------------------------------------------------CACC-C----AAGGAG---------A---------------------------------------------------UCA-CUAUACGGCCUCCUAGCUUUCC-C-CA-G----G---CUGC---------GCC-CUGCACGGGACGGCCCGG------
-```
+**Default Parameters (Balanced)**:
+- `--struct-weight=200` (LocARNA default)
+- `--indel=-150`, `--indel-opening=-750` (LocARNA default)
 
-**Parameters**:
-- Input directory: annotated precursors
-- Output directory: alignment results
-- Number of processes: for parallelization
+**Relaxed Parameters (Permissive)**:
+- `--struct-weight=100` (emphasizes sequence over structure)
+- `--indel=-100`, `--indel-opening=-500` (permissive gap penalties)
 
-**MLocARNA Parameters**:
-- `--struct-weight=300`: Increases weight for structural similarity (default=200). We use higher value to prioritize a bit structural conservation over sequence similarity.
-- `--consensus-structure=alifold`: Uses Vienna RNAalifold.
-- `--plfold-span=150`: Sets maximum span length for base pairs to 150 nucleotides, because we have sequences around 150nuc.
-- `--write-structure`: Outputs structural information for visualization.
-- `--stockholm`: Outputs alignment in Stockholm format with structure annotation.
-- `--alifold-consensus-dp`: Uses dynamic programming for more accurate consensus structures.
-- `--free-endgaps`: Allows free gaps at sequence ends.
-- `--indel=-150`: Lower gap penalty (default=-500).
-- `--indel-opening=-750`: Gap opening penalty that favors fewer but longer gaps.
-- `--threads=1`: Single-threaded per alignment (we do parallelization at script level).
+**Base MLocARNA Parameters**:
+- `--consensus-structure=alifold`: Uses Vienna RNAalifold
+- `--plfold-span=150`: Maximum span for base pairs
+- `--write-structure`: Outputs structural information
+- `--stockholm`: Stockholm format output
+- `--alifold-consensus-dp`: Dynamic programming for consensus
+- `--free-endgaps`: Allows free gaps at sequence ends
+- `--quiet`: Silent execution
 
-### 5. Alignment Organization
-**Script**: `evo_scripts/find_alignments.py`
+### 5. Alignment Processing
+**Script**: `evo_scripts/get_alignments.py`
 
-Finds alignment results and organizes them in a folder for further analysis.
-
-**Options**:
-- `--input`: Directory with alignment results
-- `--output`: Output directory
-
-### 6. Alignment Filtering
-**Script**: `evo_scripts/filter_alignments.py`
-
-Filters alignments to keep only those with >10 sequences.
-
-**Options**:
-- Input directory: alignment files
-- Output directory: filtered alignments
-- `--min`: Minimum sequences required (default: 10)
-
-### 7. Phylogenetic Tree Construction
-**Script**: Uses IQ-TREE via `run_iqtree.sh`
-
-Builds evolutionary trees using IQ-TREE, processing filtered alignments in parallel.
-
-**IQ-TREE Parameters**:
-- `-m MFP`: ModelFinder Plus for best model selection
-- `-nt 1`: Use 1 CPU thread per tree (we do parallelization across trees)
-- `-pre`: Set prefix for output files
+Processes alignment results with comprehensive status reporting:
+- Pre-processing analysis (SUCCESS/FAILED/EMPTY/MISSING)
+- Detailed statistics (success rates, sequence distribution)
+- Processing results with filtering statistics
 
 ## Running the Pipeline
 
-The pipeline is divided into two main parts:
-
-### 1. MSA Generation (run_msa.sh)
+### Complete Pipeline
 ```
 ./run_msa.sh
 ```
-This script performs steps 1-4:
-- Annotates the dataset
-- Retrieves precursor sequences
-- Annotates precursors with structure
-- Performs multiple sequence alignment
 
-### 2. Phylogenetic Analysis (run_iqtree.sh)
+This single script runs the complete pipeline:
+1. Annotates dataset with miRGeneDB IDs
+2. Retrieves orthologous sequences (primary and precursor)
+3. Annotates sequences with secondary structure
+4. Runs alignments with all 6 parameter combinations:
+   - 3 parameter sets × 2 sequence types (primary/precursor)
+5. Processes and filters alignments
+
+## Output Structure
+
 ```
-./run_iqtree.sh
+output/
+├── manakov_positives_annotated.tsv           # Annotated dataset
+├── orthologues/
+│   ├── primary/                              # Primary sequences with flanking
+│   └── precursor/                            # Precursor sequences
+├── annotated_primary/                        # Annotated primary sequences
+├── annotated_precursor/                      # Annotated precursor sequences
+├── alignments_primary_conservative/          # Conservative alignments (primary)
+├── alignments_primary_default/               # Default alignments (primary)
+├── alignments_primary_relaxed/               # Relaxed alignments (primary)
+├── alignments_precursor_conservative/        # Conservative alignments (precursor)
+├── alignments_precursor_default/             # Default alignments (precursor)
+├── alignments_precursor_relaxed/             # Relaxed alignments (precursor)
+├── filtered_alignments_primary_conservative/ # Filtered conservative alignments (primary)
+├── filtered_alignments_primary_default/      # Filtered default alignments (primary)
+├── filtered_alignments_primary_relaxed/      # Filtered relaxed alignments (primary)
+├── filtered_alignments_precursor_conservative/ # Filtered conservative alignments (precursor)
+├── filtered_alignments_precursor_default/    # Filtered default alignments (precursor)
+└── filtered_alignments_precursor_relaxed/    # Filtered relaxed alignments (precursor)
 ```
-This script performs steps 5-7:
-- Finds and organizes alignments
-- Filters alignments (minimum 10 sequences)
-- Constructs phylogenetic trees using IQ-TREE
 
 ## Directory Structure
 
 - `miRNA_mature_files/`: miRNA sequence files
+  - `hsa_mature.fas`: Human mature miRNA sequences
+  - `flanking.fas`: Primary sequences with flanking regions
+  - `no_flanking.fas`: Precursor sequences without flanking
+  - `all_mature.fas`: All mature miRNA sequences
+  - `mirgenedb_family_mappings.tsv`: miRGeneDB family mappings
 - `evo_scripts/`: Pipeline scripts
-- `run_msa.sh`: Script for the MSA generation part of the pipeline
-- `run_iqtree.sh`: Script for the phylogenetic analysis part
+  - `annotate_dataset.py`: Annotate dataset with miRGeneDB IDs
+  - `get_orthologues.py`: Retrieve orthologous sequences
+  - `annotate_precursors.py`: Add secondary structure predictions
+  - `run_alignment.sh`: Run multiple sequence alignments
+  - `get_alignments.py`: Process and filter alignment results
+- `run_msa.sh`: Complete pipeline script
+- `env.yaml`: Conda environment specification
+
+## Features
+
+- **Silent Execution**: All scripts run without verbose output or error messages
+- **Multiple Parameter Sets**: Tests different alignment stringency levels
+- **Comprehensive Monitoring**: Detailed alignment success/failure statistics
+- **Parallel Processing**: Efficient multi-core processing (64 workers by default)
+- **Clean Output**: Organized results with clear naming conventions
+- **Filtered Results**: Post-processing creates filtered alignment directories
 
 ## Results
 
 The pipeline produces:
-- Annotated miRNA dataset
-- Precursor sequences with orthologs
-- Annotated precursor sequences
-- Multiple sequence alignments
-- Phylogenetic trees
+- Annotated miRNA dataset with miRGeneDB mappings
+- Orthologous precursor sequences from multiple species
+- Structure-annotated sequences
+- Multiple sequence alignments with 6 different parameter combinations
+- Filtered alignments ready for downstream analysis
+- Comprehensive alignment statistics and success rates
 
-Results available at: https://drive.google.com/drive/folders/14p99NI1y7rHrbHucbiIQMpqtYNTpuoMP?usp=sharing
