@@ -86,6 +86,8 @@ def process_precursors(input_dir, output_dir, mature_db):
                 
                 if precursor_id.endswith('_pri'):
                     precursor_id = precursor_id[:-4]
+                elif precursor_id.endswith('_pre'):
+                    precursor_id = precursor_id[:-4]
                 
                 lookup_key = (species, precursor_id)
                 mature = mature_db.get(lookup_key, {'5p': None, '3p': None})
