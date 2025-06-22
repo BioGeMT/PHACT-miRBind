@@ -26,7 +26,7 @@ process_file() {
     if [ -n "$PARAMS" ]; then
         MLOCARNA_CMD="$MLOCARNA_CMD $PARAMS"
     else
-        MLOCARNA_CMD="$MLOCARNA_CMD --struct-weight=300 --indel=-150 --indel-opening=-750"
+        MLOCARNA_CMD="$MLOCARNA_CMD --struct-weight=200 --indel=-150 --indel-opening=-750"
     fi
     
     eval $MLOCARNA_CMD >/dev/null 2>&1
