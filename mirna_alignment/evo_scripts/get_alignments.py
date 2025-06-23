@@ -32,30 +32,28 @@ def process_alignments(input_dir, output_dir, min_sequences=10, clean_comments=T
     
     for subfolder in subfolders:
         subfolder_name = os.path.basename(subfolder)
-        aln_files = [f for f in os.listdir(subfolder) if f.endswith('.aln')]
         
-        if not aln_files:
+        # Only look for result.aln in results subdirectory
+        results_subdir = os.path.join(subfolder, 'results')
+        result_file_path = os.path.join(results_subdir, 'result.aln')
+        
+        # Skip if results subdirectory doesn't exist or result.aln doesn't exist
+        if not os.path.exists(result_file_path):
             continue
         
-        selected_file = "result.aln" if "result.aln" in aln_files else aln_files[0]
-        source_path = os.path.join(subfolder, selected_file)
-        
-        if not os.path.exists(source_path):
-            continue
-        
-        seq_count = count_sequences(source_path)
+        seq_count = count_sequences(result_file_path)
         
         if seq_count >= min_sequences:
             output_filename = f"{subfolder_name}.aln"
             dest_path = os.path.join(output_dir, output_filename)
             
             if clean_comments:
-                with open(source_path, 'r') as src, open(dest_path, 'w') as dst:
+                with open(result_file_path, 'r') as src, open(dest_path, 'w') as dst:
                     for line in src:
                         if not line.startswith('#A'):
                             dst.write(line)
             else:
-                shutil.copy2(source_path, dest_path)
+                shutil.copy2(result_file_path, dest_path)
             
             copied += 1
     

@@ -21,29 +21,28 @@ process_file() {
     
     mkdir -p "$FILE_OUTPUT_DIR" 2>/dev/null
 
-    MLOCARNA_CMD="mlocarna \"$FASTA_FILE\" --tgtdir=\"$FILE_OUTPUT_DIR\" --threads=1 --consensus-structure=alifold --plfold-span=150 --write-structure --stockholm --alifold-consensus-dp --free-endgaps --quiet"
+    # Base mlocarna command with essential parameters
+    MLOCARNA_CMD="mlocarna \"$FASTA_FILE\" --tgtdir=\"$FILE_OUTPUT_DIR\" --threads=1 --write-structure --stockholm --free-endgaps --alifold-consensus-dp --plfold-span=150"
     
+    # Add custom parameters if provided
     if [ -n "$PARAMS" ]; then
         MLOCARNA_CMD="$MLOCARNA_CMD $PARAMS"
-    else
-        MLOCARNA_CMD="$MLOCARNA_CMD --struct-weight=200 --indel=-150 --indel-opening=-750"
     fi
     
     eval $MLOCARNA_CMD >/dev/null 2>&1
-
-    mv "$FILE_OUTPUT_DIR"/results/* "$FILE_OUTPUT_DIR"/ 2>/dev/null
-    rmdir "$FILE_OUTPUT_DIR"/results 2>/dev/null
 }
 
 export -f process_file
 export OUTPUT_PARENT_DIR
 export CUSTOM_PARAMS
 
+# Process files in parallel
 cat "$TMP_FILE" | while read -r FASTA_FILE; do
     (
         process_file "$FASTA_FILE" "$OUTPUT_PARENT_DIR" "$CUSTOM_PARAMS"
     ) &
     
+    # Control number of parallel processes
     while [ $(jobs -p | wc -l | tr -d '[:space:]') -ge $PARALLEL_PROCESSES ]; do
         sleep 1
     done
