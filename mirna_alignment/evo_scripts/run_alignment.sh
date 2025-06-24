@@ -22,7 +22,7 @@ process_file() {
     mkdir -p "$FILE_OUTPUT_DIR" 2>/dev/null
 
     # Base mlocarna command with essential parameters
-    MLOCARNA_CMD="mlocarna \"$FASTA_FILE\" --tgtdir=\"$FILE_OUTPUT_DIR\" --threads=1 --write-structure --stockholm --free-endgaps --alifold-consensus-dp --plfold-span=150"
+    MLOCARNA_CMD="mlocarna \"$FASTA_FILE\" --tgtdir=\"$FILE_OUTPUT_DIR\" --threads=1 --write-structure --stockholm  --alifold-consensus-dp --plfold-span=150 --width 1000"
     
     # Add custom parameters if provided
     if [ -n "$PARAMS" ]; then

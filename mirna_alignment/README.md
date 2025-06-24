@@ -95,14 +95,14 @@ GGGUCUGUCCACCUGCCGCGCCCCCCGGGCUGAGGUAGGAGGUUGUAUAGUUGAGGAGGACACCCAAGGAGAUCACUAUA
 
 Performs structure-aware alignments using MLocARNA with two parameter sets:
 
-**Conservative Parameters (Stricter)**:
-- `--struct-weight=300` (emphasizes structure over sequence)
-- `--indel=-200`, `--indel-opening=-1000` (strict gap penalties)
-- `--min-prob=0.005` (higher probability threshold)
+**High Parameters (Stricter)**:
+- `--struct-weight=400` (emphasizes structure over sequence)
+- `--indel=-300`, `--indel-open=-1000` (strict gap penalties)
+- `--max-diff-am=30`, `--max-diff=80` (additional structural constraints)
 
 **Default Parameters (Balanced)**:
 - `--struct-weight=200` (balanced structure/sequence weighting)
-- `--indel=-150`, `--indel-opening=-750` (moderate gap penalties)
+- `--indel=-150`, `--indel-open=-750` (moderate gap penalties)
 
 **Base MLocARNA Parameters**:
 - `--consensus-structure=alifold`: Uses Vienna RNAalifold
@@ -110,7 +110,6 @@ Performs structure-aware alignments using MLocARNA with two parameter sets:
 - `--write-structure`: Outputs structural information
 - `--stockholm`: Stockholm format output
 - `--alifold-consensus-dp`: Dynamic programming for consensus
-- `--free-endgaps`: Allows free gaps at sequence ends
 - `--quiet`: Silent execution
 
 ### 5. Alignment Processing
@@ -131,10 +130,11 @@ Processes alignment results with comprehensive status reporting:
 This single script runs the complete pipeline:
 1. Annotates dataset with miRGeneDB IDs
 2. Retrieves orthologous sequences (primary and precursor)
-3. Annotates sequences with secondary structure
-4. Runs alignments with 4 parameter combinations:
-   - 2 parameter sets × 2 sequence types (primary/precursor)
-5. Processes and filters alignments
+3. Annotates sequences with secondary structure for both primary and precursor sequences
+4. Makes alignment script executable
+5. Runs alignments with 4 parameter combinations:
+   - 2 parameter sets (high/default) × 2 sequence types (primary/precursor)
+6. Filters alignments
 
 ## Output Structure
 
@@ -146,13 +146,13 @@ output/
 │   └── precursor/                            # Precursor sequences
 ├── annotated_primary/                        # Annotated primary sequences
 ├── annotated_precursor/                      # Annotated precursor sequences
-├── alignments_primary_conservative/          # Conservative alignments (primary)
+├── alignments_primary_high/                  # High parameter alignments (primary)
 ├── alignments_primary_default/               # Default alignments (primary)
-├── alignments_precursor_conservative/        # Conservative alignments (precursor)
+├── alignments_precursor_high/                # High parameter alignments (precursor)
 ├── alignments_precursor_default/             # Default alignments (precursor)
-├── filtered_alignments_primary_conservative/ # Filtered conservative alignments (primary)
+├── filtered_alignments_primary_high/         # Filtered high parameter alignments (primary)
 ├── filtered_alignments_primary_default/      # Filtered default alignments (primary)
-├── filtered_alignments_precursor_conservative/ # Filtered conservative alignments (precursor)
+├── filtered_alignments_precursor_high/       # Filtered high parameter alignments (precursor)
 └── filtered_alignments_precursor_default/    # Filtered default alignments (precursor)
 ```
 
@@ -176,7 +176,7 @@ output/
 ## Features
 
 - **Silent Execution**: All scripts run without verbose output or error messages
-- **Multiple Parameter Sets**: Tests conservative and default alignment stringency levels
+- **Multiple Parameter Sets**: Tests high parameter (strict) and default alignment stringency levels
 - **Comprehensive Monitoring**: Detailed alignment success/failure statistics
 - **Parallel Processing**: Efficient multi-core processing (64 workers by default)
 - **Clean Output**: Organized results with clear naming conventions
