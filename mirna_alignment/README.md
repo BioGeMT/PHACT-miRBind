@@ -33,9 +33,7 @@ Required packages:
 - 555 unique mature miRNAs identified
 - 377 unique precursor miRNAs
 - 229 unique miRNA families
-- 358 of 377 precursors had multiple sequences to align (resulting in 358 alignments)
-- 279 alignments with 10+ sequences used for phylogenetics
-- 279 phylogenetic trees built
+- 377 precursors had multiple sequences to align 
 
 ## Input Dataset
 
@@ -120,40 +118,78 @@ Processes alignment results with comprehensive status reporting:
 - Detailed statistics (success rates, sequence distribution)
 - Processing results with filtering statistics
 
+### 6. Phylogenetic Tree Construction
+**Script**: `run_trees.sh`
+
+Builds maximum likelihood phylogenetic trees using IQ-TREE for all filtered alignments.
+
+**IQ-TREE Parameters**:
+- `-m TEST`: Model selection (tests all standard DNA models)
+- `-bb 1000`: Ultrafast bootstrap with 1000 replicates
+- `-nt 1`: Single thread per job (for parallel execution)
+- `--seqtype DNA`: Explicitly specify nucleotide sequences
+- `--safe`: Prevent numerical underflow issues
+- `--seed 42`: Reproducible results
+- `--quiet`: Reduce output verbosity
+
+- 5 miRNAs have precursor sequences too conserved for bootstrap analysis:
+  - Hsa-Mir-3187, Hsa-Mir-423, Hsa-Mir-584, Hsa-Mir-642, Hsa-Mir-935-v1
+- These trees are built without bootstrap support but retain valid topology and branch lengths
+- Primary sequences for these miRNAs successfully build trees with bootstrap support
+
+**Tree Processing**: `evo_scripts/get_trees.py`
+
+Extracts clean `.treefile` outputs from IQ-TREE results for downstream analysis.
+
 ## Running the Pipeline
 
 ### Complete Pipeline
 ```
-./run_msa.sh
+./run_msa.sh    # Multiple sequence alignments
+./run_trees.sh  # Phylogenetic tree construction
 ```
 
-This single script runs the complete pipeline:
+**MSA Pipeline** (`run_msa.sh`):
 1. Annotates dataset with miRGeneDB IDs
 2. Retrieves orthologous sequences (primary and precursor)
 3. Annotates sequences with secondary structure for both primary and precursor sequences
 4. Makes alignment script executable
 5. Runs alignments with 4 parameter combinations:
    - 2 parameter sets (high/default) × 2 sequence types (primary/precursor)
-6. Filters alignments
+6. Filters alignments (4+ sequences minimum)
+
+**Tree Pipeline** (`run_trees.sh`):
+1. Builds phylogenetic trees for all filtered alignments
+2. Uses IQ-TREE with model selection and bootstrap support
+3. Processes 4 alignment parameter combinations in parallel
+4. Extracts clean `.treefile` outputs for downstream analysis
 
 ## Output Structure
 
 ```
 output/
-├── manakov_positives_annotated.tsv           # Annotated dataset
+├── manakov_positives_annotated.tsv              # Annotated dataset
 ├── orthologues/
-│   ├── primary/                              # Primary sequences with flanking
-│   └── precursor/                            # Precursor sequences
-├── annotated_primary/                        # Annotated primary sequences
-├── annotated_precursor/                      # Annotated precursor sequences
-├── alignments_primary_high/                  # High parameter alignments (primary)
-├── alignments_primary_default/               # Default alignments (primary)
-├── alignments_precursor_high/                # High parameter alignments (precursor)
-├── alignments_precursor_default/             # Default alignments (precursor)
-├── filtered_alignments_primary_high/         # Filtered high parameter alignments (primary)
-├── filtered_alignments_primary_default/      # Filtered default alignments (primary)
-├── filtered_alignments_precursor_high/       # Filtered high parameter alignments (precursor)
-└── filtered_alignments_precursor_default/    # Filtered default alignments (precursor)
+│   ├── primary/                                 # Primary sequences with flanking
+│   └── precursor/                               # Precursor sequences
+├── annotated_primary/                           # Annotated primary sequences
+├── annotated_precursor/                         # Annotated precursor sequences
+├── alignments_primary_high/                     # High parameter alignments (primary)
+├── alignments_primary_default/                  # Default alignments (primary)
+├── alignments_precursor_high/                   # High parameter alignments (precursor)
+├── alignments_precursor_default/                # Default alignments (precursor)
+├── filtered_alignments_primary_high_4seq/       # Filtered alignments (4+ sequences, primary high)
+├── filtered_alignments_primary_default_4seq/    # Filtered alignments (4+ sequences, primary default)
+├── filtered_alignments_precursor_high_4seq/     # Filtered alignments (4+ sequences, precursor high)
+├── filtered_alignments_precursor_default_4seq/  # Filtered alignments (4+ sequences, precursor default)
+├── trees_primary_high_4seq/                     # Raw IQ-TREE output (primary high)
+├── trees_primary_default_4seq/                  # Raw IQ-TREE output (primary default)
+├── trees_precursor_high_4seq/                   # Raw IQ-TREE output (precursor high)
+├── trees_precursor_default_4seq/                # Raw IQ-TREE output (precursor default)
+├── trees_primary_high_clean/                    # Clean .treefile only (primary high) - 331 trees
+├── trees_primary_default_clean/                 # Clean .treefile only (primary default) - 331 trees
+├── trees_precursor_high_clean/                  # Clean .treefile only (precursor high) - 331 trees
+└── trees_precursor_default_clean/               # Clean .treefile only (precursor default) - 331 trees
 ```
 
 ## Directory Structure
@@ -170,25 +206,7 @@ output/
   - `annotate_precursors.py`: Add secondary structure predictions
   - `run_alignment.sh`: Run multiple sequence alignments
   - `get_alignments.py`: Process and filter alignment results
-- `run_msa.sh`: Complete pipeline script
+  - `get_trees.py`: Extract clean .treefile outputs from IQ-TREE results
+- `run_msa.sh`: Complete MSA pipeline script
+- `run_trees.sh`: Phylogenetic tree construction script  
 - `env.yaml`: Conda environment specification
-
-## Features
-
-- **Silent Execution**: All scripts run without verbose output or error messages
-- **Multiple Parameter Sets**: Tests high parameter (strict) and default alignment stringency levels
-- **Comprehensive Monitoring**: Detailed alignment success/failure statistics
-- **Parallel Processing**: Efficient multi-core processing (64 workers by default)
-- **Clean Output**: Organized results with clear naming conventions
-- **Filtered Results**: Post-processing creates filtered alignment directories
-
-## Results
-
-The pipeline produces:
-- Annotated miRNA dataset with miRGeneDB mappings
-- Orthologous precursor sequences from multiple species
-- Structure-annotated sequences
-- Multiple sequence alignments with 4 different parameter combinations
-- Filtered alignments ready for downstream analysis
-- Comprehensive alignment statistics and success rates
-
