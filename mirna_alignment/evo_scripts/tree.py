@@ -192,22 +192,22 @@ def create_sequence_faces(sequence, consensus, node, column_start=1, flanking_ma
             
             if individual_char != consensus_char:
                 # Plain text for differences from consensus structure
-                face = TextFace(individual_char, fsize=200, ftype='courier', bold=True, fgcolor='black')
+                face = TextFace(individual_char, fsize=100, ftype='courier', bold=True, fgcolor='black')
             elif individual_char in '()':
                 # Light red for matching parentheses (base pairs)
-                face = TextFace(individual_char, fsize=200, ftype='courier', bold=True, fgcolor='black')
+                face = TextFace(individual_char, fsize=100, ftype='courier', bold=True, fgcolor='black')
                 face.background.color = 'lightcoral'
             else:
                 # Light blue for matching dots
-                face = TextFace(individual_char, fsize=200, ftype='courier', bold=True, fgcolor='black')
+                face = TextFace(individual_char, fsize=100, ftype='courier', bold=True, fgcolor='black')
                 face.background.color = 'lightblue'
         elif not is_flanking and seq_nt.upper() != cons_nt.upper() and seq_nt != '-':
             # Color highlighting for mature sequences and loop (non-flanking)
-            face = TextFace(seq_nt, fsize=200, ftype='courier', bold=True, fgcolor='white')
+            face = TextFace(seq_nt, fsize=100, ftype='courier', bold=True, fgcolor='white')
             face.background.color = colors.get(seq_nt.upper(), 'purple')
         else:
             # No color highlighting for flanking regions or consensus matches
-            face = TextFace(seq_nt, fsize=200, ftype='courier', bold=True, fgcolor='black')
+            face = TextFace(seq_nt, fsize=100, ftype='courier', bold=True, fgcolor='black')
         face.margin_right = 0
         face.margin_left = 0
         faces.add_face_to_node(face, node, column=column_start + i, position='aligned')
@@ -301,6 +301,20 @@ if __name__ == "__main__":
     tree_file, fasta_file, highlight_level, species_csv, stk_file, primary_file = sys.argv[1:7]
     highlight_level = highlight_level.lower()
     
+    # Extract miRNA name and pre/pri type from tree file path
+    import os
+    tree_filename = os.path.basename(tree_file)  # e.g., "Hsa-Let-7-P1b.treefile"
+    mirna_name = tree_filename.replace('.treefile', '')  # e.g., "Hsa-Let-7-P1b"
+    
+    # Determine pre/pri type from directory name
+    tree_dir = os.path.dirname(tree_file)
+    if 'pre_' in tree_dir:
+        sequence_type = "Pre-miRNA"
+    elif 'pri_' in tree_dir:
+        sequence_type = "Primary Transcript"
+    else:
+        sequence_type = "miRNA"
+    
     # Validate level
     if highlight_level not in ['kingdom', 'phylum', 'class', 'order', 'family']:
         print(f"Invalid level: {highlight_level}")
@@ -344,7 +358,9 @@ if __name__ == "__main__":
         colors = generate_colors(len(groups))
         group_colors = dict(zip(groups, colors))
     
-    # Setup tree (preserve original branch lengths)
+    # Setup tree - make all branches same length
+    for node in t.traverse():
+        node.dist = 1.0  # Set all branch lengths to 1.0
     
     # Link alignment
     with open(fasta_file) as f:
@@ -364,7 +380,10 @@ if __name__ == "__main__":
     ts.mode = 'r'
     ts.scale = 400
     ts.branch_vertical_margin = 5
-    ts.title.add_face(TextFace(f'Phylogenetic Tree - {highlight_level.title()} Level', fsize=300, bold=True), column=0)
+    
+    # Create comprehensive title
+   # title_text = f'{mirna_name} {sequence_type} - Phylogenetic Tree ({highlight_level} taxonomy highlighted)'
+    #ts.title.add_face(TextFace(title_text, fsize=300, bold=True), column=0)
     
     output_file = f'phylo_tree_{highlight_level}.png'
     t.render(output_file, w=8000, h=5000, dpi=300, tree_style=ts)
