@@ -12,6 +12,107 @@ def load_species_mapping(csv_file):
     df = pd.read_csv(csv_file)
     return dict(zip(df['3_letter_code'].str.lower(), df['taxid']))
 
+def parse_stk_annotations(stk_file):
+    """Parse STK file to identify flanking regions and secondary structure"""
+    mature_mask = None
+    structure_mask = None
+    
+    with open(stk_file, 'r') as f:
+        for line in f:
+            if line.startswith('#=GC cA1'):
+                # Extract the annotation string after the identifier
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    mature_mask = ''.join(parts[2:])  # Join all parts after 'cA1'
+            elif line.startswith('#=GC SS_cons'):
+                # Extract secondary structure annotation
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    structure_mask = ''.join(parts[2:])  # Join all parts after 'SS_cons'
+    
+    if not mature_mask:
+        return None, None
+        
+    # Find first A and last B to identify true flanking regions
+    first_A = mature_mask.find('A')
+    last_B = mature_mask.rfind('B')
+    
+    if first_A == -1 or last_B == -1:
+        return None, None
+        
+    # Create flanking mask: True for 5'/3' flanking, False for mature+loop
+    flanking_mask = []
+    for i, char in enumerate(mature_mask):
+        if i < first_A or i > last_B:
+            flanking_mask.append(True)  # 5'/3' flanking region
+        else:
+            flanking_mask.append(False)  # Mature sequences + loop region
+    
+    return flanking_mask, structure_mask
+
+def parse_primary_structures(primary_file):
+    """Parse primary.fa file to extract individual sequence structures"""
+    structures = {}
+    current_name = None
+    
+    with open(primary_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('>'):
+                # Extract sequence name (remove '>')
+                current_name = line[1:]
+            elif line.endswith(' #S') and current_name:
+                # This is a structure line
+                structure = line[:-3]  # Remove ' #S'
+                structures[current_name] = structure
+                
+    return structures
+
+def get_aligned_structure(seq_name, aligned_sequence, individual_structures):
+    """Align individual structure to match the consensus alignment"""
+    if seq_name not in individual_structures:
+        return None
+    
+    individual_struct = individual_structures[seq_name]
+    aligned_struct = []
+    struct_pos = 0
+    
+    # Map individual structure to aligned sequence positions
+    for seq_char in aligned_sequence:
+        if seq_char == '-':
+            # Gap in alignment - use dot for structure
+            aligned_struct.append('.')
+        else:
+            # Non-gap character - use corresponding structure position
+            if struct_pos < len(individual_struct):
+                aligned_struct.append(individual_struct[struct_pos])
+            else:
+                aligned_struct.append('.')
+            struct_pos += 1
+    
+    return ''.join(aligned_struct)
+
+def get_region_boundaries(flanking_mask):
+    """Find major boundary positions between flanking and mature regions"""
+    if not flanking_mask:
+        return []
+    
+    boundaries = []
+    
+    # Find the first transition from flanking (True) to mature (False)
+    for i in range(len(flanking_mask) - 1):
+        if flanking_mask[i] == True and flanking_mask[i + 1] == False:
+            boundaries.append(i + 1)  # 5' flanking to mature transition
+            break
+    
+    # Find the last transition from mature (False) to flanking (True)
+    for i in range(len(flanking_mask) - 1, 0, -1):
+        if flanking_mask[i - 1] == False and flanking_mask[i] == True:
+            boundaries.append(i)  # mature to 3' flanking transition
+            break
+    
+    return boundaries
+
 def get_ncbi_lineage(ncbi, taxid):
     """Get taxonomic lineage for a taxid"""
     try:
@@ -63,14 +164,49 @@ def calculate_consensus(sequences):
         consensus.append(max(counts, key=counts.get) if counts else '-')
     return ''.join(consensus)
 
-def create_sequence_faces(sequence, consensus, node, column_start=1):
-    """Create colored nucleotide faces"""
+def create_sequence_faces(sequence, consensus, node, column_start=1, flanking_mask=None, structure_mask=None):
+    """Create colored nucleotide faces, showing individual structures vs consensus in flanking regions"""
     colors = {'A': 'red', 'T': 'blue', 'G': 'green', 'C': 'orange', 'U': 'blue', '-': 'gray'}
+    
+    # Get individual structure for this sequence (needs to be aligned to match consensus)
+    individual_struct = get_aligned_structure(node.name, sequence, individual_structures)
+    
+    # Find boundaries between flanking and mature regions for blank spaces
+    boundaries = get_region_boundaries(flanking_mask) if flanking_mask else []
+    
     for i, (seq_nt, cons_nt) in enumerate(zip(sequence, consensus)):
-        if seq_nt.upper() != cons_nt.upper() and seq_nt != '-':
+        # Check if this position is in a flanking region
+        is_flanking = flanking_mask and i < len(flanking_mask) and flanking_mask[i]
+        
+        # Check if this is a boundary position (transition between regions)
+        is_boundary = i in boundaries
+        
+        if is_boundary:
+            # Add blank space at region boundaries
+            face = TextFace(' ', fsize=200, ftype='courier', bold=False, fgcolor='white')
+            face.background.color = 'white'
+        elif is_flanking and structure_mask and individual_struct and i < len(structure_mask) and i < len(individual_struct):
+            # In flanking regions: show individual structure symbols
+            individual_char = individual_struct[i]
+            consensus_char = structure_mask[i]
+            
+            if individual_char != consensus_char:
+                # Plain text for differences from consensus structure
+                face = TextFace(individual_char, fsize=200, ftype='courier', bold=True, fgcolor='black')
+            elif individual_char in '()':
+                # Light red for matching parentheses (base pairs)
+                face = TextFace(individual_char, fsize=200, ftype='courier', bold=True, fgcolor='black')
+                face.background.color = 'lightcoral'
+            else:
+                # Light blue for matching dots
+                face = TextFace(individual_char, fsize=200, ftype='courier', bold=True, fgcolor='black')
+                face.background.color = 'lightblue'
+        elif not is_flanking and seq_nt.upper() != cons_nt.upper() and seq_nt != '-':
+            # Color highlighting for mature sequences and loop (non-flanking)
             face = TextFace(seq_nt, fsize=200, ftype='courier', bold=True, fgcolor='white')
             face.background.color = colors.get(seq_nt.upper(), 'purple')
         else:
+            # No color highlighting for flanking regions or consensus matches
             face = TextFace(seq_nt, fsize=200, ftype='courier', bold=True, fgcolor='black')
         face.margin_right = 0
         face.margin_left = 0
@@ -99,6 +235,9 @@ code_to_taxid = {}
 taxonomic_data = {}
 group_colors = {}
 highlight_level = ""
+flanking_mask = None
+structure_mask = None
+individual_structures = {}
 
 def layout(node):
     """Tree layout function"""
@@ -145,21 +284,21 @@ def layout(node):
         
         # Add sequence highlighting
         if hasattr(node, 'props') and 'sequence' in node.props:
-            create_sequence_faces(node.props['sequence'], consensus_seq, node, column_start=1)
+            create_sequence_faces(node.props['sequence'], consensus_seq, node, column_start=1, flanking_mask=flanking_mask, structure_mask=structure_mask)
     
     # Bootstrap values
     if not node.is_leaf and hasattr(node, 'support') and node.support:
-        support_face = TextFace(f"{node.support:.0f}", fsize=200, fgcolor='blue', bold=True)
+        support_face = TextFace(f"{node.support:.0f}", fsize=150, fgcolor='blue', bold=True)
         faces.add_face_to_node(support_face, node, column=0, position='branch-top')
 
 # Main execution
 if __name__ == "__main__":
-    if len(sys.argv) < 5:
-        print("Usage: python tree2.py <tree_file> <fasta_file> <taxonomic_level> <species_csv>")
+    if len(sys.argv) < 7:
+        print("Usage: python tree.py <tree_file> <fasta_file> <taxonomic_level> <species_csv> <stk_file> <primary_file>")
         print("Levels: kingdom, phylum, class, order, family")
         sys.exit(1)
     
-    tree_file, fasta_file, highlight_level, species_csv = sys.argv[1:5]
+    tree_file, fasta_file, highlight_level, species_csv, stk_file, primary_file = sys.argv[1:7]
     highlight_level = highlight_level.lower()
     
     # Validate level
@@ -170,6 +309,12 @@ if __name__ == "__main__":
     # Load data
     code_to_taxid = load_species_mapping(species_csv)
     ncbi = NCBITaxa()
+    
+    # Parse STK annotations to identify flanking regions and secondary structure
+    flanking_mask, structure_mask = parse_stk_annotations(stk_file)
+    
+    # Parse individual structures from primary.fa
+    individual_structures = parse_primary_structures(primary_file)
     
     # Load tree
     with open(tree_file) as f:
@@ -219,10 +364,10 @@ if __name__ == "__main__":
     ts.mode = 'r'
     ts.scale = 400
     ts.branch_vertical_margin = 5
-    ts.title.add_face(TextFace(f'Phylogenetic Tree - {highlight_level.title()} Level', fsize=16, bold=True), column=0)
+    ts.title.add_face(TextFace(f'Phylogenetic Tree - {highlight_level.title()} Level', fsize=300, bold=True), column=0)
     
     output_file = f'phylo_tree_{highlight_level}.png'
-    t.render(output_file, w=3000, h=2000, dpi=300, tree_style=ts)
+    t.render(output_file, w=8000, h=5000, dpi=300, tree_style=ts)
     
     # Save lineage data
     save_lineage_data(taxonomic_data, highlight_level, species_csv)
