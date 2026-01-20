@@ -2,7 +2,7 @@
 
 # Step 1: Annotate dataset with miRGeneDB IDs
 echo "Step 1: Annotating dataset with miRGeneDB IDs..."
-python evo_scripts/annotate_dataset.py --fasta miRNA_mature_files/hsa_mature.fas --tsv /home/dtzim01/positives.tsv --mirgenedb miRNA_mature_files/mirgenedb_family_mappings.tsv --output output/manakov_positives_annotated.tsv
+python evo_scripts/annotate_dataset.py --fasta miRNA_mature_files/hsa_mature.fas --tsv positives.tsv --mirgenedb miRNA_mature_files/mirgenedb_family_mappings.tsv --output output/manakov_positives_annotated.tsv
 
 # Step 2: Get orthologues using both primary (flanking) and precursor (no_flanking) sequences
 echo "Step 2: Getting orthologues..."
