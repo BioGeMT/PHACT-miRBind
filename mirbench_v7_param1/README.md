@@ -10,9 +10,9 @@ The recorded leaderboard results are:
 
 | Model | Representation and architecture | Test AUPRC | Left-out AUPRC |
 | --- | --- | ---: | ---: |
-| PHACT-P1 Agentomics Multi-Candidate Fusion | Selected-fusion features, RiNALMo layers 3/6/9/12, and attention over up to three mature candidates | 0.889978 | 0.860845 |
-| PHACT-P1 Agentomics Selected Fusion | miRBind2 and reverse-complement pair grids, PHACT-P1, conservation, metadata, and frozen RiNALMo embeddings | 0.889904 | 0.862177 |
-| PHACT-P1 Conservation CNN | Pair grid + 4 miRNA P1 + 4 target PHACT + target phyloP/phastCons channels | 0.887023 | 0.866165 |
+| PHACT-P1 Multi-Candidate Fusion | Multimodal-fusion features, RiNALMo layers 3/6/9/12, and attention over up to three mature candidates | 0.889978 | 0.860845 |
+| PHACT-P1 Multimodal Fusion | miRBind2 and reverse-complement pair grids, PHACT-P1, conservation, metadata, and frozen RiNALMo embeddings | 0.889904 | 0.862177 |
+| PHACT-P1 miRNA + Target + Conservation CNN | Pair grid + 4 miRNA P1 + 4 target PHACT + target phyloP/phastCons channels | 0.887023 | 0.866165 |
 | PHACT-P1 miRNA + Target CNN | Pair grid + 4 mature-miRNA P1 + 4 target PHACT channels | 0.885963 | 0.864901 |
 | PHACT-P1 miRNA CNN | Pair grid + 4 mature-miRNA P1 channels | 0.877736 | 0.870263 |
 

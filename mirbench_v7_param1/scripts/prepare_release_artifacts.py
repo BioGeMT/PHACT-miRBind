@@ -52,7 +52,7 @@ MODELS: list[dict[str, Any]] = [
     },
     {
         "slug": "phact_p1_conservation_cnn",
-        "name": "PHACT-P1 Conservation CNN",
+        "name": "PHACT-P1 miRNA + Target + Conservation CNN",
         "family": "cnn",
         "run_dir": "outputs/param_1_conservation_conflict28_shift1_focal1_cnn",
         "prediction_prefix": "model3",
@@ -62,7 +62,7 @@ MODELS: list[dict[str, Any]] = [
     },
     {
         "slug": "phact_p1_agentomics_selected_fusion",
-        "name": "PHACT-P1 Agentomics Selected Fusion",
+        "name": "PHACT-P1 Multimodal Fusion",
         "family": "agentomics",
         "run_dir": "outputs/param_1_agentomics_model_5",
         "expected": {"test": 0.8899038583452401, "leftout": 0.8621774605396150},
@@ -71,7 +71,7 @@ MODELS: list[dict[str, Any]] = [
     },
     {
         "slug": "phact_p1_agentomics_multicandidate_fusion",
-        "name": "PHACT-P1 Agentomics Multi-Candidate Fusion",
+        "name": "PHACT-P1 Multi-Candidate Fusion",
         "family": "agentomics",
         "run_dir": "outputs/param_1_agentomics_model_4",
         "expected": {"test": 0.8899782667360706, "leftout": 0.8608448391338781},
