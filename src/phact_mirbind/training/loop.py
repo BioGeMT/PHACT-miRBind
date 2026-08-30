@@ -8,6 +8,7 @@ import platform
 import random
 import sys
 import time
+from contextlib import nullcontext
 from datetime import datetime
 from pathlib import Path
 from typing import Mapping
@@ -31,6 +32,82 @@ from phact_mirbind.training.logging import (
 from phact_mirbind.training.metrics import average_precision
 
 
+def load_widened_state_dict(
+    model: nn.Module,
+    source_state_dict: Mapping[str, torch.Tensor],
+) -> None:
+    """Load a narrower compatible model while preserving its initial function.
+
+    Existing output units are copied exactly. Connections from newly added
+    input units into existing output units start at zero, while newly added
+    output units keep their random initialization. This supports widening CNN
+    filter stacks without discarding a trained checkpoint.
+    """
+
+    target_state_dict = model.state_dict()
+    if target_state_dict.keys() != source_state_dict.keys():
+        missing = sorted(source_state_dict.keys() - target_state_dict.keys())
+        extra = sorted(target_state_dict.keys() - source_state_dict.keys())
+        raise ValueError(
+            f"Incompatible state dictionaries; missing={missing}, extra={extra}"
+        )
+
+    widened_state_dict: dict[str, torch.Tensor] = {}
+    for name, target in target_state_dict.items():
+        source = source_state_dict[name]
+        if source.ndim != target.ndim or any(
+            source_size > target_size
+            for source_size, target_size in zip(source.shape, target.shape)
+        ):
+            raise ValueError(
+                f"Cannot widen {name} from {tuple(source.shape)} "
+                f"to {tuple(target.shape)}"
+            )
+        if source.shape == target.shape:
+            widened_state_dict[name] = source
+            continue
+
+        widened = target.clone()
+        if widened.ndim >= 2:
+            widened[: source.shape[0]].zero_()
+        source_slices = tuple(slice(0, size) for size in source.shape)
+        widened[source_slices] = source
+        widened_state_dict[name] = widened
+
+    model.load_state_dict(widened_state_dict, strict=True)
+
+
+def configure_new_input_channels_only(
+    model: nn.Module,
+    source_state_dict: Mapping[str, torch.Tensor],
+) -> int:
+    """Freeze a widened model except for newly appended first-conv inputs."""
+    parameter_name = "conv_layers.0.weight"
+    parameters = dict(model.named_parameters())
+    if parameter_name not in parameters or parameter_name not in source_state_dict:
+        raise ValueError(f"Missing required parameter: {parameter_name}")
+    parameter = parameters[parameter_name]
+    source = source_state_dict[parameter_name]
+    if parameter.ndim != 4 or source.ndim != 4:
+        raise ValueError("first convolution weights must be four-dimensional")
+    if parameter.shape[1] <= source.shape[1]:
+        raise ValueError("model has no newly appended first-convolution inputs")
+    if (
+        parameter.shape[0] != source.shape[0]
+        or parameter.shape[2:] != source.shape[2:]
+    ):
+        raise ValueError("first convolution changed beyond its input channels")
+
+    for candidate in model.parameters():
+        candidate.requires_grad_(False)
+    parameter.requires_grad_(True)
+    mask = torch.zeros_like(parameter)
+    mask[:, source.shape[1] :] = 1
+    parameter.register_hook(lambda gradient: gradient * mask)
+    model._keep_frozen_modules_in_eval = True
+    return int(mask.sum().item())
+
+
 def run_epoch(
     model: nn.Module,
     loader: DataLoader,
@@ -43,8 +120,14 @@ def run_epoch(
     progress_every: int,
     progress_log_path: Path,
     show_progress: bool,
+    amp_dtype: torch.dtype | None = None,
+    grad_clip_norm: float | None = None,
 ) -> dict[str, float]:
     model.train(optimizer is not None)
+    if optimizer is not None and getattr(model, "_keep_frozen_modules_in_eval", False):
+        for module in model.modules():
+            if isinstance(module, (nn.modules.batchnorm._BatchNorm, nn.Dropout)):
+                module.eval()
     total_loss = 0.0
     batch_count = 0
     sample_count = 0
@@ -57,7 +140,12 @@ def run_epoch(
 
     try:
         for batch in loader:
-            *model_inputs, label = batch
+            sample_weights = None
+            if getattr(loader.dataset, "has_sample_weights", False):
+                *model_inputs, label, sample_weights = batch
+                sample_weights = sample_weights.to(device, non_blocking=True)
+            else:
+                *model_inputs, label = batch
             model_inputs = [
                 item.to(device, non_blocking=True) for item in model_inputs
             ]
@@ -65,20 +153,34 @@ def run_epoch(
 
             if optimizer is not None:
                 optimizer.zero_grad(set_to_none=True)
-                logits = model(*model_inputs)
-                loss = criterion(logits, label)
+                with autocast_context(device, amp_dtype):
+                    logits = model(*model_inputs)
+                    loss = (
+                        criterion(logits, label, sample_weights)
+                        if sample_weights is not None
+                        else criterion(logits, label)
+                    )
                 loss.backward()
+                if grad_clip_norm is not None:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
                 optimizer.step()
             else:
                 with torch.no_grad():
-                    logits = model(*model_inputs)
-                    loss = criterion(logits, label)
+                    with autocast_context(device, amp_dtype):
+                        logits = model(*model_inputs)
+                        loss = (
+                            criterion(logits, label, sample_weights)
+                            if sample_weights is not None
+                            else criterion(logits, label)
+                        )
 
             total_loss += loss.item()
             batch_count += 1
             sample_count += int(label.numel())
             labels.append(label.detach().cpu().numpy())
-            probabilities.append(torch.sigmoid(logits).detach().cpu().numpy())
+            probabilities.append(
+                torch.sigmoid(logits).float().detach().cpu().numpy()
+            )
             maybe_log_progress(
                 progress_log_path,
                 epoch=epoch,
@@ -129,6 +231,8 @@ def train_model(
     final_eval_phases: tuple[str, ...] = ("test", "leftout"),
     show_progress: bool = False,
     extra_checkpoint: dict[str, object] | None = None,
+    amp_dtype: torch.dtype | None = None,
+    grad_clip_norm: float | None = None,
 ) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -161,6 +265,8 @@ def train_model(
             "trainable_params": sum(
                 param.numel() for param in model.parameters() if param.requires_grad
             ),
+            "amp_dtype": str(amp_dtype) if amp_dtype is not None else None,
+            "grad_clip_norm": grad_clip_norm,
         }
     )
     summary_path.write_text(json.dumps(json_ready(summary), indent=2) + "\n")
@@ -190,6 +296,8 @@ def train_model(
             progress_every=progress_every,
             progress_log_path=progress_log_path,
             show_progress=show_progress,
+            amp_dtype=amp_dtype,
+            grad_clip_norm=grad_clip_norm,
         )
         for phase in epoch_eval_phases:
             record[phase] = run_epoch(
@@ -203,6 +311,7 @@ def train_model(
                 progress_every=progress_every,
                 progress_log_path=progress_log_path,
                 show_progress=show_progress,
+                amp_dtype=amp_dtype,
             )
         record["epoch_seconds"] = time.perf_counter() - epoch_started
 
@@ -267,6 +376,7 @@ def train_model(
             progress_every=progress_every,
             progress_log_path=progress_log_path,
             show_progress=show_progress,
+            amp_dtype=amp_dtype,
         )
     final_eval_path.write_text(json.dumps(json_ready(final_record), indent=2) + "\n")
     print_final_evaluation(final_record)
@@ -283,6 +393,12 @@ def train_model(
         "final_evaluation": final_eval_path,
         "summary": summary_path,
     }
+
+
+def autocast_context(device: torch.device, amp_dtype: torch.dtype | None):
+    if amp_dtype is None or device.type != "cuda":
+        return nullcontext()
+    return torch.autocast(device_type="cuda", dtype=amp_dtype)
 
 
 def expected_sample_count(loader: DataLoader) -> int | None:

@@ -13,6 +13,10 @@ This repo contains three runnable miRBind-style model families:
 The original PHACTn workflows are kept under `PHACTn/`. The PyTorch cache,
 training, and model implementations are under `src/phact_mirbind/`.
 
+The exact five-model PHACT consensus parameter-1 release for miRBench v7,
+including data preparation, training order, inference, and artifact validation,
+is documented in [`mirbench_v7_param1/README.md`](mirbench_v7_param1/README.md).
+
 ## Layout
 
 ```text
@@ -27,7 +31,7 @@ src/phact_mirbind/
 ## Setup
 
 ```bash
-cd /home/dtzim01/PHACT-miRBind
+cd PHACT-miRBind
 uv sync
 ```
 

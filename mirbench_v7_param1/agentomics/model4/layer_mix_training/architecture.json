@@ -1,0 +1,291 @@
+{
+  "format_version": 1,
+  "iteration": 33,
+  "model_name": "PHACTGatedLayerMixFusionNet",
+  "model_type": "single standalone one-logit PyTorch binary classifier",
+  "objective": "improve grouped split-0 validation AUPRC without any ensemble or prediction reuse",
+  "initialization": {
+    "classifier_checkpoint": "iteration-30 selected model.pt",
+    "strictly_loaded_classifier_tensors": 94,
+    "base_checkpoint_best_epoch": 3,
+    "base_checkpoint_seed": 20260724,
+    "base_checkpoint_representation": "iteration30_trainable_rinalmo_fusion",
+    "foundation_encoder": "artifact-local fine-tuned RiNALMo-micro from iteration 30",
+    "foundation_encoder_location_during_production": "artifact-local rinalmo_model/",
+    "foundation_encoder_inside_classifier": false,
+    "epoch0_prediction_contract": "exact iteration-30 logits because residual adapter is all-zero"
+  },
+  "inputs": {
+    "mirbind2_supplied_orientation": [
+      28,
+      50,
+      18
+    ],
+    "reverse_complement_grid": [
+      20,
+      28,
+      50
+    ],
+    "target_conservation_and_phact": [
+      12,
+      50
+    ],
+    "selected_candidate_mirna_phact": [
+      65,
+      28
+    ],
+    "numeric_metadata": 104,
+    "categorical_metadata": [
+      "feature",
+      "dominant_region"
+    ],
+    "rinalmo_selected_layer_pair_vectors": [
+      4,
+      1920
+    ],
+    "rinalmo_hidden_state_indices": [
+      3,
+      6,
+      9,
+      12
+    ],
+    "pair_vector_order_per_layer": [
+      "miRNA",
+      "target",
+      "absolute_difference",
+      "elementwise_product"
+    ],
+    "baseline_rinalmo_pair_vector": "selected-layer tensor offset 3 (block output 12)",
+    "id_is_predictive_input": false
+  },
+  "inherited_iteration30_backbone": {
+    "mirbind2_penultimate_features": 30,
+    "mirbind2_original_logit_features": 1,
+    "reverse_complement_features": 160,
+    "metadata_state": 128,
+    "final_layer_rinalmo_adapter_features": 96,
+    "fusion_input": 415,
+    "fusion_hidden": 224,
+    "final_output": 1,
+    "target_phact_branch": "Conv1d 12->48->64, kernel 5, max+mean pool",
+    "mirna_phact_branch": "Conv1d 65->48->48, kernel 3, max+mean pool",
+    "metadata_path": "104 numeric + 8 feature embedding + 8 region embedding + pooled PHACT branches -> Linear(344,128), SiLU, dropout 0.15",
+    "rinalmo_adapter": "LayerNorm(1920), Linear(1920,256), SiLU, dropout 0.20, Linear(256,96), SiLU, dropout 0.10",
+    "fusion_head": "Linear(415,224), SiLU, dropout 0.30, Linear(224,1)",
+    "always_frozen": [
+      "miRBind2 branch",
+      "reverse-complement main CNN",
+      "reverse-complement seed CNN"
+    ]
+  },
+  "new_layer_mix_branch": {
+    "shared_normalization": "LayerNorm(1920) applied independently to each selected layer",
+    "shared_projector": "Linear(1920,160), SiLU, dropout 0.10",
+    "gate_condition": "existing 128-dimensional metadata state containing target PHACT, selected miRNA PHACT, numeric, and categories",
+    "gate": "Linear(128,4), softmax over selected layers",
+    "gate_weight_initialization": "all zeros",
+    "gate_bias_initialization_layer_order_3_6_9_12": [
+      -1.0,
+      -0.5,
+      0.0,
+      1.5
+    ],
+    "initial_softmax_weights_layer_order_3_6_9_12": [
+      0.05698168993612326,
+      0.09394692423812584,
+      0.1548922923082515,
+      0.6941790935174994
+    ],
+    "mixed_state": "softmax-weighted sum of four shared projected layer vectors",
+    "delta": "mixed_state minus projected block-12 vector",
+    "delta_mlp": "Linear(160,96), SiLU, dropout 0.10",
+    "residual_adapter": "bias-free Linear(96,224), weight initialized exactly to zero",
+    "fusion": "add one residual to the original 224-dimensional fusion pre-activation; retain original SiLU/dropout/final classifier",
+    "additional_parameters": 347388
+  },
+  "mask_enforcement": {
+    "target_conservation": "channels 0/1 multiplied by masks 2/3 inside model",
+    "target_phact": "score channels 4:11 multiplied by finite mask channel 11 inside model",
+    "mirna_phact": "score channels 0:64 multiplied by profile/position mask channel 64 inside model",
+    "valid_iteration30_inputs_unchanged": true
+  },
+  "architecture_config": {
+    "mirbind2_num_pairs": 17,
+    "mirbind2_onehot_channels": 18,
+    "mirbind2_embedding_dim": 8,
+    "mirbind2_dropout_rate": 0.2,
+    "mirbind2_filter_sizes": [
+      128,
+      64,
+      32
+    ],
+    "mirbind2_kernel_sizes": [
+      6,
+      3,
+      3
+    ],
+    "rc_input_channels": 20,
+    "rc_main_conv1_channels": 32,
+    "rc_main_conv2_channels": 48,
+    "rc_main_conv3_channels": 64,
+    "rc_seed_conv_channels": 32,
+    "rc_feature_dim": 160,
+    "target_input_channels": 12,
+    "mirna_phact_input_channels": 65,
+    "target_conv1_channels": 48,
+    "target_conv2_channels": 64,
+    "mirna_phact_conv1_channels": 48,
+    "mirna_phact_conv2_channels": 48,
+    "feature_embedding_dim": 8,
+    "dominant_embedding_dim": 8,
+    "aux_numeric_dim": 104,
+    "metadata_hidden_dim": 128,
+    "fusion_hidden_dim": 224,
+    "target_dropout": 0.05,
+    "mirna_phact_dropout": 0.05,
+    "metadata_dropout": 0.15,
+    "fusion_dropout": 0.3,
+    "feature_vocab_size": 22,
+    "dominant_region_vocab_size": 8,
+    "rinalmo_hidden_size": 480,
+    "rinalmo_concat_dim": 1920,
+    "rinalmo_branch_hidden_dim": 256,
+    "rinalmo_feature_dim": 96,
+    "rinalmo_dropout": 0.2
+  },
+  "layer_mix_config": {
+    "selected_layer_indices": [
+      3,
+      6,
+      9,
+      12
+    ],
+    "layer_count": 4,
+    "layer_pair_dim": 1920,
+    "projected_dim": 160,
+    "delta_hidden_dim": 96,
+    "fusion_residual_dim": 224,
+    "projector_dropout": 0.1,
+    "delta_dropout": 0.1,
+    "gate_initial_bias": [
+      -1.0,
+      -0.5,
+      0.0,
+      1.5
+    ],
+    "baseline_layer_offset": 3
+  },
+  "parameter_counts": {
+    "total": 1289270,
+    "warmup_trainable": 348676,
+    "finetune_trainable": 1041701,
+    "warmup_groups": {
+      "new_branch": 348676,
+      "adapter_and_head": 0,
+      "phact_and_metadata": 0
+    },
+    "finetune_groups": {
+      "new_branch": 348676,
+      "adapter_and_head": 613697,
+      "phact_and_metadata": 79328
+    }
+  },
+  "training_hyperparameters": {
+    "candidate_selection_policy": "train exactly two candidates independently from the same immutable epoch-0 initialization and select exactly one checkpoint; never average",
+    "epoch0_is_selection_candidate": true,
+    "candidates": {
+      "layers_a": {
+        "seed": 20260729,
+        "warmup_epochs": 1,
+        "warmup_learning_rates": {
+          "new_branch": 0.0003
+        },
+        "maximum_finetune_epochs": 4,
+        "finetune_learning_rates": {
+          "new_branch": 0.0002,
+          "adapter_and_head": 1e-05,
+          "phact_and_metadata": 3e-06
+        }
+      },
+      "layers_b": {
+        "seed": 20260730,
+        "warmup_epochs": 1,
+        "warmup_learning_rates": {
+          "new_branch": 0.00015
+        },
+        "maximum_finetune_epochs": 4,
+        "finetune_learning_rates": {
+          "new_branch": 0.0001,
+          "adapter_and_head": 5e-06,
+          "phact_and_metadata": 1e-06
+        }
+      }
+    },
+    "loss": "unweighted BCEWithLogitsLoss",
+    "optimizer": "AdamW",
+    "weight_decay": 0.0001,
+    "preferred_batch_size": 768,
+    "ordered_batch_size_oom_fallbacks": [
+      512,
+      384
+    ],
+    "gradient_accumulation": 1,
+    "mixed_precision": "CUDA bfloat16 when supported, otherwise CUDA float16; float32 on CPU",
+    "gradient_clip_global_norm": 5.0,
+    "scheduler": {
+      "name": "ReduceLROnPlateau",
+      "mode": "max",
+      "monitor": "full-validation AUPRC",
+      "factor": 0.5,
+      "patience": 1
+    },
+    "early_stopping": {
+      "monitor": "full-validation AUPRC",
+      "patience_after_warmup": 2,
+      "maximum_total_optimization_epochs_per_candidate": 5
+    },
+    "checkpoint_selection": {
+      "primary": "highest full-validation AUPRC",
+      "tie_break_1": "lower full-validation log loss",
+      "tie_break_2": "fewer optimization epochs",
+      "number_of_final_checkpoints": 1
+    },
+    "dataloader": {
+      "num_workers": 0,
+      "pin_memory_on_cuda": true
+    },
+    "frozen_module_mode": "frozen branches remain in eval mode during training"
+  },
+  "validation_metrics_each_epoch": [
+    "AUPRC",
+    "AUROC",
+    "log_loss",
+    "Brier",
+    "accuracy",
+    "precision",
+    "recall",
+    "F1",
+    "MCC"
+  ],
+  "prohibited_mechanisms": {
+    "ensemble": false,
+    "blend": false,
+    "stacking": false,
+    "voting": false,
+    "prediction_averaging": false,
+    "checkpoint_averaging": false,
+    "previous_validation_predictions_as_features": false,
+    "archived_logits_as_features": false,
+    "auxiliary_prediction_head": false,
+    "foundation_pooler_or_task_head": false
+  },
+  "rationale": [
+    "The zero-initialized residual preserves the strongest iteration-30 operating point exactly at epoch 0.",
+    "Shared projection limits additional capacity while allowing blocks 3, 6, 9, and 12 to contribute complementary RNA representations.",
+    "PHACT/context-conditioned gates let evolutionary availability and target context alter layer emphasis without label-conditioned candidate selection.",
+    "Subtracting block 12 makes the new path a correction rather than a second independent predictor.",
+    "Low differential learning rates protect the pretrained PHACT/metadata and final-layer paths on the grouped unseen-miRNA validation regime."
+  ],
+  "smoke_report": "architecture_smoke.json",
+  "smoke_status": "passed"
+}

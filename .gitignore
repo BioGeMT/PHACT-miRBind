@@ -9,3 +9,6 @@ __pycache__/
 /agentomics_mock/
 /*.log
 /phact_algorithm.pdf
+/mirbench_v7_param1/**/*.pt
+/mirbench_v7_param1/**/artifacts/
+/mirbench_v7_param1/**/foundation_cache/

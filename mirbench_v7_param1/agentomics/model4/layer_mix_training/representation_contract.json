@@ -1,0 +1,399 @@
+{
+  "base_representation": {
+    "id_usage": "joins and output alignment only; never a predictive feature",
+    "labels_used_by_representation": false,
+    "preprocessor_refit": false,
+    "preprocessor_sha256": "4072bc9bf1bff7760c978114d8692b8b974fa09c2829cfce183fd60f2e475435",
+    "source": "byte-identical copy of iteration-30 data_representation.py and split-0-train-fitted preprocessor.pkl",
+    "validation_fitted_statistics": false
+  },
+  "expected_shapes": {
+    "aux_numeric_per_sample": 104,
+    "baseline_rinalmo_pair_vector_per_sample": 1920,
+    "foundation_layer_pair_vectors_per_sample": [
+      4,
+      1920
+    ],
+    "foundation_sequence_layers_per_sample": [
+      4,
+      480
+    ],
+    "mirbind2_pair_per_sample": [
+      28,
+      50,
+      18
+    ],
+    "mirna_phact_per_sample": [
+      65,
+      28
+    ],
+    "reverse_complement_pair_grid_per_sample": [
+      20,
+      28,
+      50
+    ],
+    "target_conservation_phact_per_sample": [
+      12,
+      50
+    ]
+  },
+  "format_version": 1,
+  "foundation_cache": {
+    "builder": "foundation_layer_cache.py",
+    "deduplication": "stable first occurrence separately for cleaned miRNA and target strings",
+    "production_note": "full split caches are training/inference workspace intermediates, not final production artifacts",
+    "row_alignment": "samples.tsv order stored as IDs and validated exactly",
+    "stored_dtypes": {
+      "pooled_states": "float32",
+      "row_to_unique": "int32",
+      "token_counts": "int16",
+      "validity": "uint8"
+    },
+    "stored_shapes": {
+      "row_maps": "[N]",
+      "unique_mirna": "[U_miRNA,4,480]",
+      "unique_target": "[U_target,4,480]"
+    }
+  },
+  "inference_contract": {
+    "input_dependency": "input/ only; never labels.csv",
+    "preprocessing_fit_during_inference": false,
+    "preserve_samples_row_order": true,
+    "required_files": [
+      "samples.tsv",
+      "sample_mirna_candidates.tsv",
+      "phact_mirna_positions.tsv",
+      "phact_target_positions.tsv",
+      "mirgenedb_premirna_orthologues.tsv"
+    ],
+    "unknown_categories": "saved other index"
+  },
+  "predictive_inputs": {
+    "baseline_rinalmo_pair_vector": {
+      "contract": "exact final-layer pair vector shared by baseline adapter and new branch",
+      "shape_per_sample": [
+        1920
+      ],
+      "source": "foundation_layer_pair_vectors[:,3,:]"
+    },
+    "categorical_metadata": {
+      "features": [
+        "feature",
+        "dominant_region"
+      ],
+      "vocabularies": "saved iteration-30 training-fitted vocabularies with missing/other handling",
+      "vocabulary_sizes": {
+        "dominant_region": 8,
+        "feature": 22
+      }
+    },
+    "foundation_layer_pair_vectors": {
+      "encoder": "artifact-local fine-tuned RiNALMo-micro copied from selected iteration-30 artifacts",
+      "encoder_blocks": 12,
+      "external_scaling": null,
+      "hidden_width": 480,
+      "intermediate_state_implementation": "read-only forward hooks because installed multimolecule RiNALMo ignores output_hidden_states; returned normalized last_hidden_state is state 12",
+      "lm_or_task_head_used": false,
+      "pair_order": [
+        "miRNA",
+        "target",
+        "absolute_difference",
+        "elementwise_product"
+      ],
+      "pooler_used": false,
+      "pooling": "float32 mean over attention=1 and special-token=0 biological tokens only",
+      "selected_hidden_state_indices": [
+        3,
+        6,
+        9,
+        12
+      ],
+      "selected_state_meaning": [
+        "output_after_block_3",
+        "output_after_block_6",
+        "output_after_block_9",
+        "output_after_block_12_plus_final_LayerNorm"
+      ],
+      "shape_per_sample": [
+        4,
+        1920
+      ],
+      "target_orientation": "supplied/original target; no reverse complement"
+    },
+    "miRBind2_pairwise_onehot": {
+      "channel_order": "iteration-30 supplementary miRBind2 pair-state contract",
+      "materialization": "lazy per minibatch from integer codes",
+      "orientation": "miRNA and supplied-orientation target",
+      "shape_per_sample": [
+        28,
+        50,
+        18
+      ]
+    },
+    "numeric_metadata": {
+      "feature_names": [
+        "gene_len",
+        "mirna_len",
+        "gene_gc_frac",
+        "mirna_gc_frac",
+        "seed_max_contiguous_rc_match_len_2_8",
+        "seed6_rc_match_count_2_7",
+        "seed7_rc_match_count_2_8",
+        "gene_phyloP_mean",
+        "gene_phyloP_std",
+        "gene_phyloP_min",
+        "gene_phyloP_max",
+        "gene_phyloP_median",
+        "gene_phyloP_q25",
+        "gene_phyloP_q75",
+        "gene_phyloP_finite_fraction",
+        "gene_phyloP_empty_indicator",
+        "gene_phastCons_mean",
+        "gene_phastCons_std",
+        "gene_phastCons_min",
+        "gene_phastCons_max",
+        "gene_phastCons_median",
+        "gene_phastCons_q25",
+        "gene_phastCons_q75",
+        "gene_phastCons_finite_fraction",
+        "gene_phastCons_empty_indicator",
+        "candidate_count",
+        "has_selected_mirna_phact",
+        "has_target_phact_any_position",
+        "exact_rc_count_mirna_1_7",
+        "exact_rc_count_mirna_1_8",
+        "exact_rc_count_mirna_2_9",
+        "exact_rc_count_mirna_2_10",
+        "seed_2_7_segment_valid",
+        "seed_2_7_max_wc_frac",
+        "seed_2_7_max_wobble_frac",
+        "seed_2_7_max_pair_frac",
+        "seed_2_7_max_score_frac",
+        "seed_2_7_max_contiguous_wc_frac",
+        "seed_2_7_max_contiguous_pair_frac",
+        "seed_2_7_top3_score_frac_mean",
+        "seed_2_7_windows_score_ge_0p75_frac",
+        "seed_2_7_windows_score_ge_0p85_frac",
+        "seed_2_7_best_start_norm",
+        "seed_2_7_best_center_distance_frac",
+        "seed_2_8_segment_valid",
+        "seed_2_8_max_wc_frac",
+        "seed_2_8_max_wobble_frac",
+        "seed_2_8_max_pair_frac",
+        "seed_2_8_max_score_frac",
+        "seed_2_8_max_contiguous_wc_frac",
+        "seed_2_8_max_contiguous_pair_frac",
+        "seed_2_8_top3_score_frac_mean",
+        "seed_2_8_windows_score_ge_0p75_frac",
+        "seed_2_8_windows_score_ge_0p85_frac",
+        "seed_2_8_best_start_norm",
+        "seed_2_8_best_center_distance_frac",
+        "seed_1_8_segment_valid",
+        "seed_1_8_max_wc_frac",
+        "seed_1_8_max_wobble_frac",
+        "seed_1_8_max_pair_frac",
+        "seed_1_8_max_score_frac",
+        "seed_1_8_max_contiguous_wc_frac",
+        "seed_1_8_max_contiguous_pair_frac",
+        "seed_1_8_top3_score_frac_mean",
+        "seed_1_8_windows_score_ge_0p75_frac",
+        "seed_1_8_windows_score_ge_0p85_frac",
+        "seed_1_8_best_start_norm",
+        "seed_1_8_best_center_distance_frac",
+        "extended_2_13_segment_valid",
+        "extended_2_13_max_wc_frac",
+        "extended_2_13_max_wobble_frac",
+        "extended_2_13_max_pair_frac",
+        "extended_2_13_max_score_frac",
+        "extended_2_13_max_contiguous_wc_frac",
+        "extended_2_13_max_contiguous_pair_frac",
+        "extended_2_13_top3_score_frac_mean",
+        "extended_2_13_windows_score_ge_0p75_frac",
+        "extended_2_13_windows_score_ge_0p85_frac",
+        "extended_2_13_best_start_norm",
+        "extended_2_13_best_center_distance_frac",
+        "central_9_16_segment_valid",
+        "central_9_16_max_wc_frac",
+        "central_9_16_max_wobble_frac",
+        "central_9_16_max_pair_frac",
+        "central_9_16_max_score_frac",
+        "central_9_16_max_contiguous_wc_frac",
+        "central_9_16_max_contiguous_pair_frac",
+        "central_9_16_top3_score_frac_mean",
+        "central_9_16_windows_score_ge_0p75_frac",
+        "central_9_16_windows_score_ge_0p85_frac",
+        "central_9_16_best_start_norm",
+        "central_9_16_best_center_distance_frac",
+        "supplementary_13_22_segment_valid",
+        "supplementary_13_22_max_wc_frac",
+        "supplementary_13_22_max_wobble_frac",
+        "supplementary_13_22_max_pair_frac",
+        "supplementary_13_22_max_score_frac",
+        "supplementary_13_22_max_contiguous_wc_frac",
+        "supplementary_13_22_max_contiguous_pair_frac",
+        "supplementary_13_22_top3_score_frac_mean",
+        "supplementary_13_22_windows_score_ge_0p75_frac",
+        "supplementary_13_22_windows_score_ge_0p85_frac",
+        "supplementary_13_22_best_start_norm",
+        "supplementary_13_22_best_center_distance_frac"
+      ],
+      "scaling": "saved iteration-30 training-fitted StandardScaler statistics",
+      "shape_per_sample": [
+        104
+      ]
+    },
+    "reverse_complement_pair_grid": {
+      "materialization": "lazy per minibatch from integer codes",
+      "orientation": "right-padded target reverse-complemented inside established builder",
+      "shape_per_sample": [
+        20,
+        28,
+        50
+      ]
+    },
+    "selected_candidate_mirna_phact": {
+      "finite_scaling": "64 iteration-30 split-0-training-fitted scalers only",
+      "last_channel": "position/profile finite mask",
+      "missingness": "unavailable profiles and masked positions are exact zero",
+      "score_channel_count": 64,
+      "score_column_order": "saved sorted iteration-30 order",
+      "score_columns": [
+        "phact_0_A",
+        "phact_0_C",
+        "phact_0_G",
+        "phact_0_MinNode_Mix2_A",
+        "phact_0_MinNode_Mix2_C",
+        "phact_0_MinNode_Mix2_G",
+        "phact_0_MinNode_Mix2_T",
+        "phact_0_MinNode_Mix_A",
+        "phact_0_MinNode_Mix_C",
+        "phact_0_MinNode_Mix_G",
+        "phact_0_MinNode_Mix_T",
+        "phact_0_T",
+        "phact_0p1_A",
+        "phact_0p1_C",
+        "phact_0p1_G",
+        "phact_0p1_T",
+        "phact_0p5_A",
+        "phact_0p5_C",
+        "phact_0p5_G",
+        "phact_0p5_T",
+        "phact_1_A",
+        "phact_1_C",
+        "phact_1_G",
+        "phact_1_T",
+        "phact_2_A",
+        "phact_2_C",
+        "phact_2_G",
+        "phact_2_T",
+        "phact_3_A",
+        "phact_3_C",
+        "phact_3_G",
+        "phact_3_T",
+        "phact_5_A",
+        "phact_5_C",
+        "phact_5_G",
+        "phact_5_T",
+        "phact_CountNodes_1_A",
+        "phact_CountNodes_1_C",
+        "phact_CountNodes_1_G",
+        "phact_CountNodes_1_T",
+        "phact_CountNodes_2_A",
+        "phact_CountNodes_2_C",
+        "phact_CountNodes_2_G",
+        "phact_CountNodes_2_T",
+        "phact_CountNodes_3_A",
+        "phact_CountNodes_3_C",
+        "phact_CountNodes_3_G",
+        "phact_CountNodes_3_T",
+        "phact_CountNodes_4_A",
+        "phact_CountNodes_4_C",
+        "phact_CountNodes_4_G",
+        "phact_CountNodes_4_T",
+        "phact_max05_Gauss_A",
+        "phact_max05_Gauss_C",
+        "phact_max05_Gauss_G",
+        "phact_max05_Gauss_T",
+        "phact_mean_A",
+        "phact_mean_C",
+        "phact_mean_G",
+        "phact_mean_T",
+        "phact_median_A",
+        "phact_median_C",
+        "phact_median_G",
+        "phact_median_T"
+      ],
+      "selection": "lowest numeric candidate_index among has_phact_profile=1 candidates; otherwise unavailable",
+      "shape_per_sample": [
+        65,
+        28
+      ]
+    },
+    "target_conservation_phact": {
+      "channels": "4 phyloP/phastCons standardized-value/mask channels followed by 8 target-PHACT channels",
+      "finite_scaling": "iteration-30 split-0-training-fitted scalers only",
+      "missingness": "exact-zero score channels with explicit masks",
+      "shape_per_sample": [
+        12,
+        50
+      ],
+      "target_phact_channel_order": [
+        "standardized_score_A",
+        "standardized_score_C",
+        "standardized_score_G",
+        "standardized_score_T",
+        "standardized_actual_score",
+        "standardized_nonactual_mean",
+        "standardized_actual_minus_nonactual_mean",
+        "target_phact_finite_mask"
+      ]
+    }
+  },
+  "prohibited_inputs": [
+    "labels",
+    "IDs or split prefixes as features",
+    "archived validation predictions",
+    "archived logits",
+    "validation-fitted statistics"
+  ],
+  "representation_name": "iteration33_PHACT_gated_RiNALMo_selected_layer_extension",
+  "sequence_cleaning": {
+    "baseline": "uppercase, U-to-T, every non-ACGT character to N, right truncate/pad to 28-nt miRNA and 50-nt target contracts",
+    "foundation": "same DNA cleaning, empty to N, then T-to-U; retain N; add tokenizer special tokens"
+  },
+  "smoke_validation": {
+    "all_finite": true,
+    "biological_token_counts_exact": true,
+    "deterministic_repeat_max_abs_float32": 0.0,
+    "id_order_exact": true,
+    "masked_target_positions_exact_zero": true,
+    "online_final_layer_pair_max_abs_float32": 0.0,
+    "online_final_layer_pair_tolerance": 1e-05,
+    "report": "representation_smoke.json",
+    "row_count": 200,
+    "status": "passed",
+    "unavailable_mirna_profiles_exact_zero": true
+  },
+  "status": "validated_on_200_row_mini_train",
+  "train_only_fitted_objects": {
+    "category_vocabularies": [
+      "feature",
+      "dominant_region"
+    ],
+    "conservation_positional_scalers": [
+      "gene_phastCons",
+      "gene_phyloP"
+    ],
+    "mirna_phact_scalers_count": 64,
+    "numeric_scaler": true,
+    "target_phact_scalers": [
+      "actual_minus_nonactual_mean",
+      "actual_score",
+      "nonactual_mean",
+      "score_A",
+      "score_C",
+      "score_G",
+      "score_T"
+    ]
+  }
+}

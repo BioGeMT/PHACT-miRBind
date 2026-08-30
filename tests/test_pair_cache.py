@@ -15,6 +15,7 @@ from phact_mirbind.data.columns import (
     build_pair_to_index,
 )
 from phact_mirbind.data.pair_encoding import encode_pair_indices
+from phact_mirbind.data.pair_encoding import decode_pair_base_ids
 
 
 def test_pair_encoding_matches_mirbind_mirna_target_orientation():
@@ -35,6 +36,21 @@ def test_pair_encoding_matches_mirbind_mirna_target_orientation():
     assert encoded[1, 1] == pair_to_index[("G", "T")]
     assert encoded[0, 2] == PADDING_PAIR_INDEX
     assert encoded[1, 2] == PADDING_PAIR_INDEX
+
+
+def test_pair_grid_decodes_sequences_for_existing_caches():
+    pair_indices = torch.tensor(
+        [[[0, 1, PADDING_PAIR_INDEX], [12, 13, PADDING_PAIR_INDEX]]]
+    )
+
+    mirna_ids, mirna_mask, target_ids, target_mask = decode_pair_base_ids(
+        pair_indices
+    )
+
+    assert mirna_ids.tolist() == [[0, 3]]
+    assert mirna_mask.tolist() == [[True, True]]
+    assert target_ids.tolist() == [[0, 1, 0]]
+    assert target_mask.tolist() == [[True, True, False]]
 
 
 def test_pair_cache_round_trip(tmp_path: Path):

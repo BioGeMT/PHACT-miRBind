@@ -1,12 +1,15 @@
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
 import torch
 
 from phact_mirbind.cache.dataloaders import (
     CachedPhactPairwiseIterableDataset,
+    CompositeCachedPhactPairwiseIterableDataset,
     make_phact_collate,
+    shift_compact_target_axis,
 )
 from phact_mirbind.cache.phact_cache import write_phact_cache_from_tsv
 from phact_mirbind.data.columns import MANAKOV_COLUMNS
@@ -71,12 +74,14 @@ def test_phact_cache_builds_compact_scores_and_fills_missing_with_neutral(
     batch_pairs, channels, labels = make_phact_collate()(items)
     _, mirna_channels, _ = make_phact_collate("mirna")(items)
     _, target_channels, _ = make_phact_collate("target")(items)
+    _, outer_channels, _ = make_phact_collate("both", "outer")(items)
     manifest = json.loads(manifest_path.read_text())
 
     assert batch_pairs.shape == (2, 2, 3)
     assert channels.shape == (2, 10, 2, 3)
     assert mirna_channels.shape == (2, 5, 2, 3)
     assert target_channels.shape == (2, 5, 2, 3)
+    assert outer_channels.shape == (2, 26, 2, 3)
     assert labels.tolist() == [1.0, 0.0]
     assert torch.allclose(
         channels[0, 0, 0],
@@ -95,6 +100,16 @@ def test_phact_cache_builds_compact_scores_and_fills_missing_with_neutral(
     assert torch.allclose(channels[0, 9, :, 1], torch.tensor([1.0, 1.0]))
     assert torch.allclose(mirna_channels, channels[:, :5], atol=1e-3)
     assert torch.allclose(target_channels, channels[:, 5:], atol=1e-3)
+    assert torch.allclose(
+        outer_channels[0, 10, 0],
+        torch.tensor([0.011, 0.05, 0.031]),
+        atol=1e-3,
+    )
+    assert torch.allclose(
+        outer_channels[0, 10, 1],
+        torch.tensor([0.055, 0.25, 0.155]),
+        atol=1e-3,
+    )
     assert manifest["phact_models"] == ["CountNodes_2"]
     assert manifest["target_phact_models"] == ["target_score"]
     assert manifest["phact_axis_channel_counts"] == {"mirna": 4, "target": 4}
@@ -107,6 +122,28 @@ def test_phact_cache_builds_compact_scores_and_fills_missing_with_neutral(
     assert manifest["phact_missing"]["fill_value"] == 0.5
     assert manifest["phact_missing"]["mirna_positions_filled"] == 1
     assert manifest["phact_missing"]["target_positions_filled"] == 1
+
+    score_only_dataset = CachedPhactPairwiseIterableDataset(
+        manifest_path,
+        include_missingness=False,
+    )
+    _, score_only_channels, _ = make_phact_collate()(list(score_only_dataset))
+    assert score_only_channels.shape == (2, 8, 2, 3)
+    assert score_only_dataset.phact_channel_count == 8
+
+    weights_path = tmp_path / "weights.npz"
+    np.savez_compressed(
+        weights_path,
+        weights=np.array([0.25, 1.0], dtype=np.float32),
+    )
+    weighted_dataset = CachedPhactPairwiseIterableDataset(manifest_path)
+    weighted_dataset.set_sample_weights(weights_path)
+    _, _, weighted_labels, sample_weights = make_phact_collate()(
+        list(weighted_dataset)
+    )
+
+    assert weighted_labels.tolist() == [1.0, 0.0]
+    assert sample_weights.tolist() == [0.25, 1.0]
 
     shard_path = manifest_path.parent / manifest["shards"][0]["file"]
     legacy_shard = torch.load(shard_path, map_location="cpu")
@@ -121,6 +158,29 @@ def test_phact_cache_builds_compact_scores_and_fills_missing_with_neutral(
 
     assert legacy_channels.shape == (2, 8, 2, 3)
     assert legacy_dataset.phact_channel_count == 8
+
+    with pytest.raises(ValueError, match="channel_mode='both'"):
+        make_phact_collate("mirna", "outer")
+
+
+def test_shift_compact_target_axis_translates_pairs_and_uses_neutral_fills():
+    pairs = torch.arange(12).reshape(1, 2, 6)
+    target = torch.arange(18, dtype=torch.float32).reshape(1, 6, 3)
+
+    shifted_pairs, shifted_target = shift_compact_target_axis(
+        pairs,
+        target,
+        2,
+        (0.5, 0.0, 1.0),
+    )
+
+    assert torch.all(shifted_pairs[:, :, :2] == 17)
+    assert torch.equal(shifted_pairs[:, :, 2:], pairs[:, :, :-2])
+    assert torch.allclose(
+        shifted_target[:, :2],
+        torch.tensor([[[0.5, 0.0, 1.0], [0.5, 0.0, 1.0]]]),
+    )
+    assert torch.equal(shifted_target[:, 2:], target[:, :-2])
 
 
 def test_phact_cache_supports_multiple_named_models_on_both_axes(tmp_path: Path):
@@ -417,6 +477,82 @@ def test_phact_cache_rejects_partial_missing_scores(tmp_path: Path):
             target_length=3,
             mirna_length=2,
         )
+
+
+def test_composite_phact_cache_streams_compatible_caches(tmp_path: Path):
+    first = write_single_row_phact_cache(tmp_path / "first", label=1)
+    second = write_single_row_phact_cache(tmp_path / "second", label=0)
+
+    dataset = CompositeCachedPhactPairwiseIterableDataset(
+        [first, second],
+        shuffle_mode="none",
+    )
+    items = list(dataset)
+
+    assert [item[-1].item() for item in items] == [1.0, 0.0]
+    assert dataset.manifest["row_count"] == 2
+    assert dataset.manifest["positive_rows"] == 1
+    assert len(dataset.shards) == 2
+
+    weights_path = tmp_path / "composite_weights.npz"
+    np.savez_compressed(
+        weights_path,
+        weights=np.array([0.25, 0.0], dtype=np.float32),
+    )
+    dataset.set_sample_weights(weights_path)
+    weighted_items = list(dataset)
+
+    assert [item[-1].item() for item in weighted_items] == [0.25, 0.0]
+    assert [item[-2].item() for item in weighted_items] == [1.0, 0.0]
+
+
+def test_composite_phact_cache_rejects_incompatible_cache(tmp_path: Path):
+    first = write_single_row_phact_cache(tmp_path / "first", label=1)
+    second = write_single_row_phact_cache(tmp_path / "second", label=0)
+    second_manifest = json.loads(second.read_text())
+    second_manifest["target_length"] = 4
+    second.write_text(json.dumps(second_manifest) + "\n")
+
+    with pytest.raises(ValueError, match="target_length"):
+        CompositeCachedPhactPairwiseIterableDataset([first, second])
+
+
+def write_single_row_phact_cache(cache_root: Path, *, label: int) -> Path:
+    cache_root.mkdir(parents=True)
+    input_file = cache_root / "input.tsv"
+    input_file.write_text(
+        "\t".join([*MANAKOV_COLUMNS, "manakov_row_id"])
+        + "\n"
+        + "\t".join(manakov_row("ATC", "UG", label, 1))
+        + "\n"
+    )
+    mirna_phact_file = cache_root / "mirna_phact.tsv"
+    mirna_phact_file.write_text(
+        "split\tmanakov_row_id\tmirna_position_1based\tactual_nt\t"
+        "phact_CountNodes_3_A\tphact_CountNodes_3_C\t"
+        "phact_CountNodes_3_G\tphact_CountNodes_3_T\n"
+        "train\t1\t1\tT\t0.1\t0.2\t0.3\t0.4\n"
+        "train\t1\t2\tG\t0.2\t0.3\t0.4\t0.5\n"
+    )
+    target_phact_file = cache_root / "target_phact.tsv"
+    target_phact_file.write_text(
+        "split\tmanakov_row_id\ttarget_position_1based\tgenomic_position\t"
+        "actual_nt\tscore_A\tscore_C\tscore_G\tscore_T\n"
+        "train\t1\t1\t10\tA\t0.1\t0.2\t0.3\t0.4\n"
+        "train\t1\t2\t11\tT\t0.2\t0.3\t0.4\t0.5\n"
+        "train\t1\t3\t12\tC\t0.3\t0.4\t0.5\t0.6\n"
+    )
+    return write_phact_cache_from_tsv(
+        input_file,
+        cache_root / "cache",
+        output_prefix="tiny",
+        phact_split="train",
+        phact_models="CountNodes_3",
+        mirna_phact_file=mirna_phact_file,
+        target_phact_file=target_phact_file,
+        target_length=3,
+        mirna_length=2,
+    )
 
 
 def manakov_row(gene: str, mirna: str, label: int, row_id: int) -> list[str]:

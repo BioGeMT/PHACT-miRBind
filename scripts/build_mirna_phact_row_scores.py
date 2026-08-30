@@ -12,21 +12,6 @@ from collections import Counter
 from pathlib import Path
 
 NUCLEOTIDES = ("A", "C", "G", "T")
-DEFAULT_SPLITS = {
-    "train": Path("/home/dtzim01/manakov_datasets/AGO2_eCLIP_Manakov2022_train.tsv"),
-    "test": Path("/home/dtzim01/manakov_datasets/AGO2_eCLIP_Manakov2022_test.tsv"),
-    "leftout": Path("/home/dtzim01/manakov_datasets/AGO2_eCLIP_Manakov2022_leftout.tsv"),
-}
-DEFAULT_SOURCE = Path(
-    "/home/dtzim01/PHACT-miRBind/reports/phact_score_ranges/"
-    "phact_mirna_arm_position_qntnorm_transformed_all_models.tsv"
-)
-DEFAULT_OUTPUT = Path(
-    "/home/dtzim01/PHACT-miRBind/reports/phact_score_ranges/"
-    "phact_mirna_manakov_position_qntnorm_transformed_scores.tsv"
-)
-
-
 def main() -> None:
     args = parse_args()
     split_paths = {
@@ -57,11 +42,11 @@ def main() -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--train-file", type=Path, default=DEFAULT_SPLITS["train"])
-    parser.add_argument("--test-file", type=Path, default=DEFAULT_SPLITS["test"])
-    parser.add_argument("--leftout-file", type=Path, default=DEFAULT_SPLITS["leftout"])
-    parser.add_argument("--phact-mirna-scores", type=Path, default=DEFAULT_SOURCE)
-    parser.add_argument("--output-file", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--train-file", type=Path, required=True)
+    parser.add_argument("--test-file", type=Path, required=True)
+    parser.add_argument("--leftout-file", type=Path, required=True)
+    parser.add_argument("--phact-mirna-scores", type=Path, required=True)
+    parser.add_argument("--output-file", type=Path, required=True)
     parser.add_argument("--summary-file", type=Path, default=None)
     parser.add_argument("--mirna-length", type=int, default=28)
     parser.add_argument(

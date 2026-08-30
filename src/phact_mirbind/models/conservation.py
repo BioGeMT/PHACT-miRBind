@@ -94,8 +94,20 @@ class PairwiseConservationCNN(nn.Module):
         return x.contiguous().view(x.size(0), -1)
 
     def classify_features(self, features: torch.Tensor) -> torch.Tensor:
-        x = self.dropout_fc(F.leaky_relu(self.bn_fc(self.fc1(features)), 0.1))
+        x = self.dropout_fc(self.project_features(features))
         return self.fc2(x).squeeze(-1)
+
+    def project_features(self, features: torch.Tensor) -> torch.Tensor:
+        """Project flattened convolutional features into the 30-value latent."""
+        return F.leaky_relu(self.bn_fc(self.fc1(features)), 0.1)
+
+    def encode(
+        self,
+        pair_indices: torch.Tensor,
+        conservation: torch.Tensor,
+    ) -> torch.Tensor:
+        """Return the latent used immediately before the final classifier."""
+        return self.project_features(self.extract_features(pair_indices, conservation))
 
     def predict_proba(
         self,

@@ -86,3 +86,4 @@ def test_pairwise_phact_cnn_forward_shape():
     logits = model(pair_indices, phact)
 
     assert logits.shape == (2,)
+    assert model.encode(pair_indices, phact).shape == (2, 30)
