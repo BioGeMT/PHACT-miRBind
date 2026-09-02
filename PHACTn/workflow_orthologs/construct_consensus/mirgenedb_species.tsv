@@ -1,0 +1,115 @@
+species_column	common_name	taxid	present_in_all_mature_fasta
+Hsa	Human	9606	1
+Aae	Yellow fever mosquito	7159	1
+Aca	Green anole lizard	28377	1
+Adi	Stony coral	70779	1
+Aga	African malaria mosquito	7165	1
+Agr	West Indian fuzzy chiton	61363	1
+Ami	American alligator	8496	1
+Aqu	Amphimedon	400682	1
+Asp	Deep-sea anemone	2984946	1
+Asu	Large roundworm	6253	1
+Ava	Bdelloid rotifer	104782	1
+Bfl	Florida lancelet	7739	1
+Bge	Cockroach	6973	1
+Bko	Monogonont Rotifer 2	1199090	1
+Bla	European lancelet	7740	1
+Bpl	Monogonont Rotifer 1	10195	1
+Bta	Cow	9913	1
+Cbr	Roundworm	6238	1
+Cel	Roundworm	6239	1
+Cfa	Dog	9615	1
+Cin	Sea Squirt	7719	1
+Cja	White-tufted-ear marmoset	9483	1
+Cli	Rock pigeon	8932	1
+Cmi	Australian ghostshark	7868	1
+Cpi	Western painted turtle	8478	1
+Cpo	Guinea pig	10141	1
+Csc	Arizona bark scorpion	218467	1
+Cte	Polychaete worm	283909	1
+Dan	Fruit fly	7217	1
+Dgr	Dimorphilus gyrociliatus	2664684	1
+Dlo	Braconid wasp	58733	1
+Dma	Large common water flea	35525	1
+Dme	Fruit fly	7227	1
+Dmo	Fruit fly	7230	1
+Dno	Nine-banded armadillo	9361	1
+Dpu	Common water flea	6669	1
+Dre	Zebrafish	7955	1
+Dsi	Fruit fly	7240	1
+Dya	Fruit fly	7245	1
+Eba	Epimenia (Solenogaster)	231999	1
+Ebu	Inshore hagfish	7764	1
+Eca	Horse	9796	1
+Efe	Common brandling worm	6396	1
+Egr	Hydatid worm	6210	1
+Emu	Muellers freshwater sponge	6052	1
+Esc	Hawaiian bobtail squid	6613	1
+Ete	Lesser hedgehog tenrec	9371	1
+Gga	Chicken	9031	1
+Gja	Schlegels Japanese gecko	146911	1
+Gmo	Cod	8049	1
+Gpa	Tsetse fly	7398	1
+Gsa	Russian doll killer	37629	1
+Gsp	Montseny horsehair worm	46637	1
+Hme	Longwing butterfly	34740	1
+Hmi	Panther worm	442651	1
+Hru	Red Abalone	6454	1
+Hvu	Freshwater-polyp	6087	1
+Isc	Deer tick	6945	1
+Laf	African bush elephant	9785	1
+Lan	Lingula	7574	1
+Lch	Coelacanth	7897	1
+Lgi	Owl limpet	225164	1
+Lhy	Laevipilina (Monoplacophora)	651133	1
+Llo	Bootlace worm	88925	1
+Loc	Spotted gar	7918	1
+Lpo	Atlantic horseshoe crab	6850	1
+Mal	Asian swamp eel	43700	1
+Mdo	Gray short-tailed opossum	13616	1
+Mgi	Pacific oyster	29159	1
+Mml	Rhesus monkey	9544	1
+Mmr	Gray mouse lemur	30608	1
+Mmu	House mouse	10090	1
+Mom	Mossy chiton	256104	1
+Mun	Microcaecilia	1415580	1
+Nag	Thorny-headed worm 1	2593365	1
+Neu	Tammar Wallaby	9315	1
+Npo	Chambered Nautilus	34573	1
+Nve	Starlet sea anemone	45351	1
+Oan	Platypus	9258	1
+Obi	California two-spot octopus	37653	1
+Ocu	Rabbit	9986	1
+Ofu	Tubeworm	6347	1
+Ovu	Common octopus	6645	1
+Pab	Sumatran orangutan	9601	1
+Pau	Horseshoe worm	115415	1
+Pbv	Burmese python	176946	1
+Pca	Penis worm	37621	1
+Pcr	Tiger flatworm	2291463	1
+Pdu	Dumerils clam worm	6359	1
+Pfl	Ptychodera	63121	1
+Ple	Thorny-headed worm 2	141832	1
+Pma	Sea Lamprey	7757	1
+Pmi	Bat starfish	46514	1
+Pve	Vernerds tusk shell	2996714	1
+Rno	Norway rat	10116	1
+Rph	Japanese carpet shell	129788	1
+Sha	Tasmanian devil	9305	1
+Sko	Saccoglossus	10224	1
+Sma	Blood fluke	6183	1
+Sme	Freshwater planarian	79327	1
+Sne	Seison	104778	1
+Snu	Peanut worm	6446	1
+Spt	Tuatara	8508	1
+Spu	Purple sea urchin	7668	1
+Sro	Roscoff worm	84072	1
+Sto	Cloudy Catshark	75743	1
+Tca	Red flour beetle	7070	1
+Tgu	Zebra finch	59729	1
+Tni	Pufferfish	99883	1
+Tur	Two-spotted spider mite	32264	1
+War	Wirenia (Solenogaster)	669229	1
+Xbo	Xenoturbella	242395	1
+Xla	African clawed frog	8355	1
+Xtr	Tropical clawed frog	8364	1
