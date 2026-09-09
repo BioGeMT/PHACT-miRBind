@@ -9,7 +9,6 @@ This repo contains four runnable miRBind-style model families:
   convolution.
 - `PairwisePhactCNN`: the pair-grid CNN augmented with position-specific PHACT
   channels from the miRNA, target, or both axes.
-
 - `PairwiseRinalmoPhactFusion`: one shared, fully fine-tuned RiNALMo-micro
   backbone for the miRNA and target, PHACT-conditioned top-layer mixing and
   positional pooling, and a frozen pretrained miRBind branch fused before
@@ -22,6 +21,11 @@ The exact five-model PHACT consensus parameter-1 release for miRBench v7,
 including data preparation, training order, inference, and artifact validation,
 is documented in [`mirbench_v7_param1/README.md`](mirbench_v7_param1/README.md).
 
+The five published models are three PHACT-P1 CNN variants and two Agentomics
+fusion models. The fully fine-tuned RiNALMo model above is a separate
+experimental model family. The fixed September positional-control study and
+final report scripts are documented under [reproduction/](reproduction/README.md).
+
 ## Layout
 
 ```text
@@ -29,7 +33,7 @@ src/phact_mirbind/
   cli/          command-line entry points
   data/         TSV row parsing, sequence normalization, pair encoding
   cache/        .pt cache writers, manifests, iterable datasets
-  models/       seq-only, conservation, and PHACT CNNs
+  models/       sequence, conservation, PHACT CNNs, and RiNALMo fusion
   training/     shared train/eval loop, metrics, logging
 ```
 
@@ -37,8 +41,17 @@ src/phact_mirbind/
 
 ```bash
 cd PHACT-miRBind
-uv sync
+uv sync --locked --extra analysis
+export PHACT_WORKSPACE=/path/to/phact
 ```
+
+On node 4, the workspace is `/SCRATCH/dtzim01/phact`. Keep the checkout on
+main and store inputs, caches, checkpoints, and figures in that workspace.
+Shell training workflows require `PHACT_WORKSPACE`; their new outputs go
+under `runs/new/`. Python CLIs take explicit input/output paths.
+
+Use unique output directories for experiments. The retained release and fixed
+follow-up directories are historical evidence, not destinations for new runs.
 
 ## Cache
 
@@ -46,8 +59,8 @@ Seq-only training uses a neutral pair cache:
 
 ```bash
 uv run build-pair-cache \
-  --input-file data/presplit_original_rows/manakov_original_rows_train.tsv \
-  --output-dir data/pair_cache_original_rows/train \
+  --input-file "$PHACT_WORKSPACE/data/inputs/manakov_original_rows/manakov_original_rows_train.tsv" \
+  --output-dir "$PHACT_WORKSPACE/data/caches/pair_cache_original_rows/train" \
   --output-prefix train
 ```
 
@@ -55,8 +68,8 @@ Conservation training uses a pair + conservation cache:
 
 ```bash
 uv run build-conservation-cache \
-  --input-file data/presplit_conservation_original_rows/manakov_original_rows_train.tsv \
-  --output-dir data/conservation_cache_original_rows/train \
+  --input-file "$PHACT_WORKSPACE/data/inputs/manakov_original_rows/manakov_original_rows_train.tsv" \
+  --output-dir "$PHACT_WORKSPACE/data/caches/conservation_cache_original_rows/train" \
   --output-prefix train \
   --conservation-features phylop,phastcons
 ```
@@ -94,8 +107,8 @@ CONSERVATION_FEATURES=phastcons scripts/run_conservation_original_split_params.s
 Build and train the PHACT-channel model:
 
 ```bash
-scripts/build_phact_full_cache.sh
-scripts/train_phact_full_cache.sh
+PHACT_MODELS=CountNodes_3 scripts/build_phact_full_cache.sh
+PHACT_MODELS=CountNodes_3 scripts/train_phact_full_cache.sh
 ```
 
 `train-phact-mirbind --phact-channel-mode` selects `mirna`, `target`, or
@@ -122,12 +135,12 @@ kept frozen and in evaluation mode.
 
 ```bash
 uv run train-rinalmo-phact-mirbind \
-  --train-cache data/phact_cache/train \
-  --additional-train-cache data/phact_cache/gse_train \
-  --val-cache data/phact_cache/val \
-  --test-cache data/phact_cache/test \
-  --leftout-cache data/phact_cache/leftout \
-  --mirbind-checkpoint outputs/seq_only/pairwise_seq_model_20260629_201939.pt \
+  --train-cache "$PHACT_WORKSPACE/runs/param1-training/cache/param_1_target_score/train" \
+  --val-cache "$PHACT_WORKSPACE/runs/param1-training/cache/param_1_target_score/val" \
+  --test-cache "$PHACT_WORKSPACE/runs/param1-training/cache/param_1_target_score/test" \
+  --leftout-cache "$PHACT_WORKSPACE/runs/param1-training/cache/param_1_target_score/leftout" \
+  --mirbind-checkpoint "$PHACT_WORKSPACE/runs/baselines/main_repo_outputs/seq_only/pairwise_seq_model_20260629_201939.pt" \
+  --output-dir "$PHACT_WORKSPACE/runs/new/rinalmo_finetune" \
   --gradient-checkpointing \
   --progress-bar
 ```
@@ -154,16 +167,14 @@ published pretrained weights are CC BY 4.0; check those terms before
 redistributing a trained derivative or packaging this code into another
 service.
 
-The scripts create/reuse:
-
-- `data/presplit_original_rows` and `data/pair_cache_original_rows`
-- `data/presplit_conservation_original_rows` and
-  `data/conservation_cache_original_rows`
+Cache-building workflows use `data/inputs/` or `data/splits/` for source rows
+and `data/caches/` for new caches inside the workspace. The original P1 run
+keeps its own cache and prepared-data subdirectories together for provenance.
 
 ## Test
 
 ```bash
-uv run pytest
+uv run pytest -q tests reproduction
 ```
 
 ## Data workspace and retained analyses

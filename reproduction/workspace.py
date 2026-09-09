@@ -7,6 +7,9 @@ DATASETS = Path(os.environ.get("PHACT_DATASETS", WORKSPACE / "data/inputs/manako
 REPO = Path(__file__).resolve().parents[1]
 
 RELOCATIONS = {
+    "/SCRATCH/dtzim01/phact_experiments": "runs/experiments",
+    "data/presplit_phact_original_rows": "data/inputs/manakov_original_rows",
+    "/home/dtzim01/step6_add_conservation": "data/inputs/gse_conservation",
     "/SCRATCH/dtzim01/phact/rambunctious_tablespoon_missed": "archive/agentomics-history",
     "/SCRATCH/dtzim01/phact/drive_import_20260813": "data/inputs/score_import_20260813",
     "/SCRATCH/dtzim01/phact/manakov_phact_ag_ready_leftout": "data/splits/manakov_agentomics_leftout",

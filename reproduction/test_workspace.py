@@ -19,3 +19,13 @@ def test_unrelated_paths_are_not_rewritten():
 def test_shared_dataset_uses_configured_copy(monkeypatch, tmp_path):
     monkeypatch.setattr(workspace, "DATASETS", tmp_path)
     assert workspace.historical_path("/home/dtzim01/manakov_datasets/test.tsv") == tmp_path / "test.tsv"
+
+
+def test_preorganization_and_relative_training_paths(monkeypatch, tmp_path):
+    monkeypatch.setattr(workspace, "WORKSPACE", tmp_path)
+    old = "/SCRATCH/dtzim01/phact_experiments/augmented_rows_v1/manakov_train_clean.tsv"
+    expected = tmp_path / "runs/experiments/augmented_rows_v1/manakov_train_clean.tsv"
+    assert workspace.historical_path(old) == expected
+    relative = "data/presplit_phact_original_rows/manakov_original_rows_train.tsv"
+    expected = tmp_path / "data/inputs/manakov_original_rows/manakov_original_rows_train.tsv"
+    assert workspace.historical_path(relative) == expected

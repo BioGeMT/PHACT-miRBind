@@ -1,5 +1,8 @@
 # Retained analyses and the September follow-up
 
+The [result-to-input map](RESULTS.md) identifies the assets for each result group
+and records the limits of the reproduction checks.
+
 Code is committed here. Inputs, controls, checkpoints, predictions, generated
 figures, and the original source snapshots stay in a separate workspace.
 Set its physical path before using these scripts:
@@ -11,8 +14,8 @@ export PHACT_WORKSPACE=/path/to/phact
 ```
 
 The default when unset is `~/phact-workspace`; no directory is created on import.
-Install the project with `uv sync`. Plotting and verification also need
-`uv sync --extra analysis`. The frozen study uses Python 3.13 on node 4.
+Install the project with `uv sync --locked`. Plotting and verification also need
+`uv sync --locked --extra analysis`. The frozen study uses Python 3.13 on node 4.
 
 `final_analysis/` contains the final report builder, QA, variant audit, and
 variant figure script. Builders write to `$PHACT_WORKSPACE/analyses/final`;
@@ -45,7 +48,7 @@ Expected workspace:
 
 ```text
 phact/
-  data/inputs/{manakov_datasets,manakov_original_rows,reference,score_import_20260813}
+  data/inputs/{manakov_datasets,manakov_original_rows,reference,gse_conservation,score_import_20260813}
   data/splits/
   data/scores/
   data/caches/
