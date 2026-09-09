@@ -174,7 +174,7 @@ keeps its own cache and prepared-data subdirectories together for provenance.
 ## Test
 
 ```bash
-uv run pytest -q tests reproduction
+uv run pytest -q tests
 ```
 
 ## Data workspace and retained analyses
