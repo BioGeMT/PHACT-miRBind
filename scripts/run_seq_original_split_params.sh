@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /home/dtzim01/PHACT-miRBind
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+: "${PHACT_WORKSPACE:?Set PHACT_WORKSPACE to the data workspace}"
 
-SOURCE_DATA=${SOURCE_DATA:-/home/dtzim01/manakov_datasets}
-REPO_DATA=/home/dtzim01/PHACT-miRBind/data
-SPLIT_DIR="$REPO_DATA/presplit_original_rows"
+SOURCE_DATA=${SOURCE_DATA:-${PHACT_WORKSPACE}/data/inputs/manakov_datasets}
+REPO_DATA=${PHACT_WORKSPACE}/data/caches
+SPLIT_DIR="$PHACT_WORKSPACE/data/splits/presplit_original_rows"
 CACHE_DIR="$REPO_DATA/pair_cache_original_rows"
 
 TRAIN_SOURCE=${TRAIN_SOURCE:-"$SOURCE_DATA/AGO2_eCLIP_Manakov2022_train.tsv"}
@@ -56,7 +57,7 @@ uv run train-seq-mirbind \
   --val-cache "$CACHE_DIR/val" \
   --test-cache "$CACHE_DIR/test" \
   --leftout-cache "$CACHE_DIR/leftout" \
-  --output-dir outputs/seq_only \
+  --output-dir "${PHACT_WORKSPACE}/runs/new/seq_only" \
   --batch-size 256 \
   --num-epochs 50 \
   --patience 7 \

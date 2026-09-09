@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /home/dtzim01/PHACT-miRBind
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+: "${PHACT_WORKSPACE:?Set PHACT_WORKSPACE to the data workspace}"
 
-SOURCE_DATA=${SOURCE_DATA:-/home/dtzim01/manakov_datasets}
-REPO_DATA=/home/dtzim01/PHACT-miRBind/data
-SPLIT_DIR="$REPO_DATA/presplit_conservation_original_rows"
+SOURCE_DATA=${SOURCE_DATA:-${PHACT_WORKSPACE}/data/inputs/manakov_datasets}
+REPO_DATA=${PHACT_WORKSPACE}/data/caches
+SPLIT_DIR="$PHACT_WORKSPACE/data/splits/presplit_conservation_original_rows"
 CACHE_DIR="$REPO_DATA/conservation_cache_original_rows"
 FEATURES=${CONSERVATION_FEATURES:-phylop,phastcons}
 
@@ -61,7 +62,7 @@ uv run train-conservation-mirbind \
   --val-cache "$CACHE_DIR/val" \
   --test-cache "$CACHE_DIR/test" \
   --leftout-cache "$CACHE_DIR/leftout" \
-  --output-dir outputs/conservation \
+  --output-dir "${PHACT_WORKSPACE}/runs/new/conservation" \
   --conservation-features "$FEATURES" \
   --batch-size 256 \
   --num-epochs 50 \

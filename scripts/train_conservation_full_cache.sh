@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /home/dtzim01/PHACT-miRBind
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+: "${PHACT_WORKSPACE:?Set PHACT_WORKSPACE to the data workspace}"
 
 FEATURES=${CONSERVATION_FEATURES:-phylop,phastcons}
 SAFE_FEATURES=${FEATURES//,/_}
-CACHE_DIR=${CACHE_DIR:-/home/dtzim01/PHACT-miRBind/data/conservation_cache_full}
-OUTPUT_DIR=${OUTPUT_DIR:-outputs/conservation_$SAFE_FEATURES}
+CACHE_DIR=${CACHE_DIR:-${PHACT_WORKSPACE}/data/caches/conservation_cache_full}
+OUTPUT_DIR=${OUTPUT_DIR:-${PHACT_WORKSPACE}/runs/new/conservation_$SAFE_FEATURES}
 
 uv run train-conservation-mirbind \
   --train-cache "$CACHE_DIR/train" \

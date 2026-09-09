@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /home/dtzim01/PHACT-miRBind
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+: "${PHACT_WORKSPACE:?Set PHACT_WORKSPACE to the data workspace}"
 
 PHACT_MODELS=${PHACT_MODELS:-${PHACT_MODEL:-CountNodes_2}}
 PHACT_REDUCTION=${PHACT_REDUCTION:-nucleotide}
@@ -11,11 +12,11 @@ SAFE_TARGET_MODELS=${TARGET_PHACT_MODELS:-target_auto}
 SAFE_TARGET_MODELS=${SAFE_TARGET_MODELS//[^a-zA-Z0-9_]/_}
 SAFE_REDUCTION=${PHACT_REDUCTION//[^a-zA-Z0-9_]/_}
 if [[ "$PHACT_MODELS" != *,* && -z "${TARGET_PHACT_MODELS:-}" ]]; then
-  DEFAULT_CACHE_DIR=/home/dtzim01/PHACT-miRBind/data/phact_cache_${SAFE_MODELS}
-  DEFAULT_OUTPUT_DIR=outputs/phact_${SAFE_MODELS}_${PHACT_CHANNEL_MODE}
+  DEFAULT_CACHE_DIR=${PHACT_WORKSPACE}/data/caches/phact_cache_${SAFE_MODELS}
+  DEFAULT_OUTPUT_DIR=${PHACT_WORKSPACE}/runs/new/phact_${SAFE_MODELS}_${PHACT_CHANNEL_MODE}
 else
-  DEFAULT_CACHE_DIR=/home/dtzim01/PHACT-miRBind/data/phact_cache_${SAFE_MODELS}_target_${SAFE_TARGET_MODELS}
-  DEFAULT_OUTPUT_DIR=outputs/phact_${SAFE_MODELS}_target_${SAFE_TARGET_MODELS}_${PHACT_CHANNEL_MODE}
+  DEFAULT_CACHE_DIR=${PHACT_WORKSPACE}/data/caches/phact_cache_${SAFE_MODELS}_target_${SAFE_TARGET_MODELS}
+  DEFAULT_OUTPUT_DIR=${PHACT_WORKSPACE}/runs/new/phact_${SAFE_MODELS}_target_${SAFE_TARGET_MODELS}_${PHACT_CHANNEL_MODE}
 fi
 if [[ "$PHACT_REDUCTION" != "nucleotide" ]]; then
   DEFAULT_CACHE_DIR="${DEFAULT_CACHE_DIR}_${SAFE_REDUCTION}"

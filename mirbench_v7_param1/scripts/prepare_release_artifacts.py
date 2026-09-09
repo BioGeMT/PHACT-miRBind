@@ -47,7 +47,7 @@ MODELS: list[dict[str, Any]] = [
         "run_dir": "outputs/param_1_mirna_target_cnn",
         "prediction_prefix": "model2",
         "expected": {"test": 0.8859630990269719, "leftout": 0.8649006093057304},
-        "representation": "18-state pair grid plus four mature-miRNA and four target-position PHACT-P1 channels",
+        "representation": "18-state pair grid plus four mature-miRNA PHACT-P1 channels and four established target-position PHACT channels",
         "architecture": "PairwisePhactCNN; 8-d pair embedding; 3 convolution blocks (128/64/32 filters; 6/3/3 kernels)",
     },
     {
@@ -66,7 +66,7 @@ MODELS: list[dict[str, Any]] = [
         "family": "agentomics",
         "run_dir": "outputs/param_1_agentomics_model_5",
         "expected": {"test": 0.8899038583452401, "leftout": 0.8621774605396150},
-        "representation": "miRBind2 and reverse-complement pair grids, miRNA/target PHACT-P1, conservation, metadata, and frozen RiNALMo embeddings for one selected mature candidate",
+        "representation": "miRBind2 and reverse-complement pair grids, mature-miRNA PHACT-P1, established target PHACT, conservation, metadata, and frozen RiNALMo embeddings for one selected mature candidate",
         "architecture": "Selected-candidate multimodal fusion network with sequence, positional, metadata, and frozen foundation-model branches",
     },
     {

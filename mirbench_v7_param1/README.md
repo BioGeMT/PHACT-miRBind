@@ -2,9 +2,11 @@
 
 This directory contains the exact source and reproducibility workflow for the
 five PHACT-P1 models submitted to the miRBench v7 leaderboard. All five use the
-new consensus-tree parameter-1 scores on the mature-miRNA axis; these retain
-position-specific signal instead of the flat mature profiles seen in the older
-score export.
+new consensus-tree parameter-1 scores on the mature-miRNA axis. The new scores
+strengthen position-specific contrast for many already-variable profiles, but
+they do not make previously flat parameter-1 mature profiles variable. Target
+channels, where present, use the established target PHACT scores and are not
+consensus parameter-1 target scores.
 
 The recorded leaderboard results are:
 

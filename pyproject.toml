@@ -5,11 +5,16 @@ description = "miRBind pairwise CNN baselines with conservation data utilities"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "multimolecule>=0.2.0",
     "numpy>=1.26",
     "pandas>=2.2",
     "scikit-learn>=1.4",
     "torch>=2.2",
+    "transformers>=5.13.1",
 ]
+
+[project.optional-dependencies]
+analysis = ["matplotlib>=3.8", "scipy>=1.11", "pillow>=10"]
 
 [project.scripts]
 build-conservation-cache = "phact_mirbind.cli.build_conservation_cache:main"
@@ -18,6 +23,7 @@ build-phact-cache = "phact_mirbind.cli.build_phact_cache:main"
 split-original-rows = "phact_mirbind.cli.split_rows:main"
 train-conservation-mirbind = "phact_mirbind.cli.train_conservation:main"
 train-phact-mirbind = "phact_mirbind.cli.train_phact:main"
+train-rinalmo-phact-mirbind = "phact_mirbind.cli.train_rinalmo_phact:main"
 train-seq-mirbind = "phact_mirbind.cli.train_seq:main"
 predict-seq-mirbind = "phact_mirbind.cli.predict_seq:main"
 
