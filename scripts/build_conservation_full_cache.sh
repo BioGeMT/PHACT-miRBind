@@ -4,9 +4,9 @@ set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 : "${PHACT_WORKSPACE:?Set PHACT_WORKSPACE to the data workspace}"
 
-SOURCE_DATA=${SOURCE_DATA:-${PHACT_WORKSPACE}/data/inputs/manakov_datasets}
-REPO_DATA=${PHACT_WORKSPACE}/data/caches
-SPLIT_DIR=${SPLIT_DIR:-"$PHACT_WORKSPACE/data/splits/presplit_conservation_original_rows"}
+SOURCE_DATA=${SOURCE_DATA:-${PHACT_WORKSPACE}/datasets/original/manakov_datasets}
+REPO_DATA=${PHACT_WORKSPACE}/models/caches
+SPLIT_DIR=${SPLIT_DIR:-"$PHACT_WORKSPACE/datasets/splits/presplit_conservation_original_rows"}
 CACHE_DIR=${CACHE_DIR:-"$REPO_DATA/conservation_cache_full"}
 FEATURES=phylop,phastcons
 

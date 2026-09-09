@@ -4,9 +4,9 @@ set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 : "${PHACT_WORKSPACE:?Set PHACT_WORKSPACE to the data workspace}"
 
-SOURCE_DATA=${SOURCE_DATA:-${PHACT_WORKSPACE}/data/inputs/manakov_datasets}
-REPO_DATA=${PHACT_WORKSPACE}/data/caches
-SPLIT_DIR="$PHACT_WORKSPACE/data/splits/presplit_original_rows"
+SOURCE_DATA=${SOURCE_DATA:-${PHACT_WORKSPACE}/datasets/original/manakov_datasets}
+REPO_DATA=${PHACT_WORKSPACE}/models/caches
+SPLIT_DIR="$PHACT_WORKSPACE/datasets/splits/presplit_original_rows"
 CACHE_DIR="$REPO_DATA/pair_cache_original_rows"
 
 TRAIN_SOURCE=${TRAIN_SOURCE:-"$SOURCE_DATA/AGO2_eCLIP_Manakov2022_train.tsv"}
@@ -57,7 +57,7 @@ uv run train-seq-mirbind \
   --val-cache "$CACHE_DIR/val" \
   --test-cache "$CACHE_DIR/test" \
   --leftout-cache "$CACHE_DIR/leftout" \
-  --output-dir "${PHACT_WORKSPACE}/runs/new/seq_only" \
+  --output-dir "${PHACT_WORKSPACE}/models/new/seq_only" \
   --batch-size 256 \
   --num-epochs 50 \
   --patience 7 \

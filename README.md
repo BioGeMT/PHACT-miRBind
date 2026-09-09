@@ -48,7 +48,7 @@ export PHACT_WORKSPACE=/path/to/phact
 On node 4, the workspace is `/SCRATCH/dtzim01/phact`. Keep the checkout on
 main and store inputs, caches, checkpoints, and figures in that workspace.
 Shell training workflows require `PHACT_WORKSPACE`; their new outputs go
-under `runs/new/`. Python CLIs take explicit input/output paths.
+under `models/new/`. Python CLIs take explicit input/output paths.
 
 Use unique output directories for experiments. The retained release and fixed
 follow-up directories are historical evidence, not destinations for new runs.
@@ -59,8 +59,8 @@ Seq-only training uses a neutral pair cache:
 
 ```bash
 uv run build-pair-cache \
-  --input-file "$PHACT_WORKSPACE/data/inputs/manakov_original_rows/manakov_original_rows_train.tsv" \
-  --output-dir "$PHACT_WORKSPACE/data/caches/pair_cache_original_rows/train" \
+  --input-file "$PHACT_WORKSPACE/datasets/splits/manakov_original_rows/manakov_original_rows_train.tsv" \
+  --output-dir "$PHACT_WORKSPACE/models/caches/pair_cache_original_rows/train" \
   --output-prefix train
 ```
 
@@ -68,8 +68,8 @@ Conservation training uses a pair + conservation cache:
 
 ```bash
 uv run build-conservation-cache \
-  --input-file "$PHACT_WORKSPACE/data/inputs/manakov_original_rows/manakov_original_rows_train.tsv" \
-  --output-dir "$PHACT_WORKSPACE/data/caches/conservation_cache_original_rows/train" \
+  --input-file "$PHACT_WORKSPACE/datasets/splits/manakov_original_rows/manakov_original_rows_train.tsv" \
+  --output-dir "$PHACT_WORKSPACE/models/caches/conservation_cache_original_rows/train" \
   --output-prefix train \
   --conservation-features phylop,phastcons
 ```
@@ -135,12 +135,12 @@ kept frozen and in evaluation mode.
 
 ```bash
 uv run train-rinalmo-phact-mirbind \
-  --train-cache "$PHACT_WORKSPACE/runs/param1-training/cache/param_1_target_score/train" \
-  --val-cache "$PHACT_WORKSPACE/runs/param1-training/cache/param_1_target_score/val" \
-  --test-cache "$PHACT_WORKSPACE/runs/param1-training/cache/param_1_target_score/test" \
-  --leftout-cache "$PHACT_WORKSPACE/runs/param1-training/cache/param_1_target_score/leftout" \
-  --mirbind-checkpoint "$PHACT_WORKSPACE/runs/baselines/main_repo_outputs/seq_only/pairwise_seq_model_20260629_201939.pt" \
-  --output-dir "$PHACT_WORKSPACE/runs/new/rinalmo_finetune" \
+  --train-cache "$PHACT_WORKSPACE/models/p1-training/cache/param_1_target_score/train" \
+  --val-cache "$PHACT_WORKSPACE/models/p1-training/cache/param_1_target_score/val" \
+  --test-cache "$PHACT_WORKSPACE/models/p1-training/cache/param_1_target_score/test" \
+  --leftout-cache "$PHACT_WORKSPACE/models/p1-training/cache/param_1_target_score/leftout" \
+  --mirbind-checkpoint "$PHACT_WORKSPACE/models/baselines/main_repo_outputs/seq_only/pairwise_seq_model_20260629_201939.pt" \
+  --output-dir "$PHACT_WORKSPACE/models/new/rinalmo_finetune" \
   --gradient-checkpointing \
   --progress-bar
 ```
@@ -167,8 +167,8 @@ published pretrained weights are CC BY 4.0; check those terms before
 redistributing a trained derivative or packaging this code into another
 service.
 
-Cache-building workflows use `data/inputs/` or `data/splits/` for source rows
-and `data/caches/` for new caches inside the workspace. The original P1 run
+Cache-building workflows use `datasets/original/` or `datasets/splits/` for source rows
+and `models/caches/` for new caches inside the workspace. The original P1 run
 keeps its own cache and prepared-data subdirectories together for provenance.
 
 ## Test
@@ -181,7 +181,7 @@ uv run pytest -q tests
 
 Keep large inputs and generated results in a separate workspace. Set
 `PHACT_WORKSPACE` before using the shell workflows; new runs go under
-`$PHACT_WORKSPACE/runs/new`. The retained follow-up and final-analysis scripts
+`$PHACT_WORKSPACE/models/new`. The retained follow-up and final-analysis scripts
 are documented in [reproduction/README.md](reproduction/README.md).
 
 The target-score builder requires explicit train/test/leftout, raw target-score,

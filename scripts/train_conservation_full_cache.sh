@@ -6,8 +6,8 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 FEATURES=${CONSERVATION_FEATURES:-phylop,phastcons}
 SAFE_FEATURES=${FEATURES//,/_}
-CACHE_DIR=${CACHE_DIR:-${PHACT_WORKSPACE}/data/caches/conservation_cache_full}
-OUTPUT_DIR=${OUTPUT_DIR:-${PHACT_WORKSPACE}/runs/new/conservation_$SAFE_FEATURES}
+CACHE_DIR=${CACHE_DIR:-${PHACT_WORKSPACE}/models/caches/conservation_cache_full}
+OUTPUT_DIR=${OUTPUT_DIR:-${PHACT_WORKSPACE}/models/new/conservation_$SAFE_FEATURES}
 
 uv run train-conservation-mirbind \
   --train-cache "$CACHE_DIR/train" \

@@ -4,15 +4,15 @@ set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 : "${PHACT_WORKSPACE:?Set PHACT_WORKSPACE to the data workspace}"
 
-SOURCE_DATA=${SOURCE_DATA:-${PHACT_WORKSPACE}/data/inputs/manakov_datasets}
-REPO_DATA=${PHACT_WORKSPACE}/data/caches
+SOURCE_DATA=${SOURCE_DATA:-${PHACT_WORKSPACE}/datasets/original/manakov_datasets}
+REPO_DATA=${PHACT_WORKSPACE}/models/caches
 PHACT_MODELS=${PHACT_MODELS:-${PHACT_MODEL:-CountNodes_2}}
 PHACT_REDUCTION=${PHACT_REDUCTION:-nucleotide}
 SAFE_MODELS=${PHACT_MODELS//[^a-zA-Z0-9_]/_}
 SAFE_TARGET_MODELS=${TARGET_PHACT_MODELS:-target_auto}
 SAFE_TARGET_MODELS=${SAFE_TARGET_MODELS//[^a-zA-Z0-9_]/_}
 SAFE_REDUCTION=${PHACT_REDUCTION//[^a-zA-Z0-9_]/_}
-SPLIT_DIR=${SPLIT_DIR:-"$PHACT_WORKSPACE/data/inputs/manakov_original_rows"}
+SPLIT_DIR=${SPLIT_DIR:-"$PHACT_WORKSPACE/datasets/splits/manakov_original_rows"}
 if [[ "$PHACT_MODELS" != *,* && -z "${TARGET_PHACT_MODELS:-}" ]]; then
   DEFAULT_CACHE_DIR="$REPO_DATA/phact_cache_${SAFE_MODELS}"
 else
@@ -22,8 +22,8 @@ if [[ "$PHACT_REDUCTION" != "nucleotide" ]]; then
   DEFAULT_CACHE_DIR="${DEFAULT_CACHE_DIR}_${SAFE_REDUCTION}"
 fi
 CACHE_DIR=${CACHE_DIR:-"$DEFAULT_CACHE_DIR"}
-MIRNA_PHACT_FILE=${MIRNA_PHACT_FILE:-${PHACT_WORKSPACE}/data/scores/main_repo/phact_mirna_manakov_position_qntnorm_transformed_scores.tsv}
-TARGET_PHACT_FILE=${TARGET_PHACT_FILE:-${PHACT_WORKSPACE}/data/scores/main_repo/phact_target_manakov_position_qntnorm_transformed_scores.tsv}
+MIRNA_PHACT_FILE=${MIRNA_PHACT_FILE:-${PHACT_WORKSPACE}/scores/tables/main_repo/phact_mirna_manakov_position_qntnorm_transformed_scores.tsv}
+TARGET_PHACT_FILE=${TARGET_PHACT_FILE:-${PHACT_WORKSPACE}/scores/tables/main_repo/phact_target_manakov_position_qntnorm_transformed_scores.tsv}
 
 TRAIN_SOURCE=${TRAIN_SOURCE:-"$SOURCE_DATA/AGO2_eCLIP_Manakov2022_train.tsv"}
 TEST_SOURCE=${TEST_SOURCE:-"$SOURCE_DATA/AGO2_eCLIP_Manakov2022_test.tsv"}
