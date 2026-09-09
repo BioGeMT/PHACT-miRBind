@@ -172,3 +172,7 @@ Keep large inputs and generated results in a separate workspace. Set
 `PHACT_WORKSPACE` before using the shell workflows; new runs go under
 `$PHACT_WORKSPACE/runs/new`. The retained follow-up and final-analysis scripts
 are documented in [reproduction/README.md](reproduction/README.md).
+
+The target-score builder requires explicit train/test/leftout, raw target-score,
+and output paths. The legacy evaluation helper requires `--results-dir`,
+`--eval-dir`, and `--output-dir`; neither assumes an old home data directory.

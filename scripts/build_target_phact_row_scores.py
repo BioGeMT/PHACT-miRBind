@@ -12,19 +12,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-DEFAULT_SPLITS = {
-    "train": Path("/home/dtzim01/manakov_datasets/AGO2_eCLIP_Manakov2022_train.tsv"),
-    "test": Path("/home/dtzim01/manakov_datasets/AGO2_eCLIP_Manakov2022_test.tsv"),
-    "leftout": Path("/home/dtzim01/manakov_datasets/AGO2_eCLIP_Manakov2022_leftout.tsv"),
-}
-DEFAULT_SOURCE = Path(
-    "/home/dtzim01/drive-download-19Ntprvu-qbI1k4ZQphZ4QnuFoXNIgK2E/"
-    "extracted/results_0226/AGO2_eCLIP_Manakov2022_qntnorm_transformed.tsv"
-)
-DEFAULT_OUTPUT = Path(
-    "/home/dtzim01/PHACT-miRBind/reports/phact_score_ranges/"
-    "phact_target_manakov_position_qntnorm_transformed_scores.tsv"
-)
 WINDOW_LEN = 50
 NUCLEOTIDES = ("A", "C", "G", "T")
 
@@ -46,11 +33,11 @@ def main() -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--train-file", type=Path, default=DEFAULT_SPLITS["train"])
-    parser.add_argument("--test-file", type=Path, default=DEFAULT_SPLITS["test"])
-    parser.add_argument("--leftout-file", type=Path, default=DEFAULT_SPLITS["leftout"])
-    parser.add_argument("--target-score-file", type=Path, default=DEFAULT_SOURCE)
-    parser.add_argument("--output-file", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--train-file", type=Path, required=True)
+    parser.add_argument("--test-file", type=Path, required=True)
+    parser.add_argument("--leftout-file", type=Path, required=True)
+    parser.add_argument("--target-score-file", type=Path, required=True)
+    parser.add_argument("--output-file", type=Path, required=True)
     parser.add_argument("--force", action="store_true")
     return parser.parse_args()
 

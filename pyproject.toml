@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-analysis = ["matplotlib>=3.8", "scipy>=1.11", "pillow>=10"]
+analysis = ["matplotlib>=3.8", "scipy>=1.11", "pillow>=10", "duckdb"]
 
 [project.scripts]
 build-conservation-cache = "phact_mirbind.cli.build_conservation_cache:main"

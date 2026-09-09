@@ -514,31 +514,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--results-dir",
         type=Path,
-        default=Path(
-            "/home/dtzim01/drive-download-19Ntprvu-qbI1k4ZQphZ4QnuFoXNIgK2E/"
-            "extracted/results_0226"
-        ),
+        required=True,
     )
     parser.add_argument(
         "--eval-dir",
         type=Path,
-        default=Path(
-            "/home/dtzim01/drive-download-19Ntprvu-qbI1k4ZQphZ4QnuFoXNIgK2E/"
-            "extracted/evaluation_set"
-        ),
+        required=True,
     )
     parser.add_argument(
         "--mirna-positions",
         type=Path,
-        default=Path(
-            "/home/dtzim01/PHACT-miRBind/PHACTn/workflow_WGA/scripts/"
-            "hsa_pre_miRNA_positions.tsv"
-        ),
+        default=Path(__file__).resolve().parents[1] / "PHACTn/workflow_WGA/scripts/hsa_pre_miRNA_positions.tsv",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("/home/dtzim01/PHACT-miRBind/reports/phact_eval_sets"),
+        required=True,
     )
     return parser.parse_args()
 
