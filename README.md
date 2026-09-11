@@ -171,12 +171,6 @@ Cache-building workflows use `datasets/original/` or `datasets/splits/` for sour
 and `models/caches/` for new caches inside the workspace. The original P1 run
 keeps its own cache and prepared-data subdirectories together for provenance.
 
-## Test
-
-```bash
-uv run pytest -q tests
-```
-
 ## Data workspace and retained analyses
 
 Keep large inputs and generated results in a separate workspace. Set
