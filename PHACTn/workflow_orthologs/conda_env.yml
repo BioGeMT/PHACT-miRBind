@@ -12,7 +12,7 @@ dependencies:
   - r-dplyr=1.1.4
   - r-stringr=1.5.1
   - r-tidytree=0.4.6
-  - raxml-ng=1.2.2
+  - raxml-ng=2.0.2
   - pip=25.1
   - pip:
       - biopython==1.84
