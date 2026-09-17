@@ -14,7 +14,7 @@ nt_norms:
   - "FN"
 
 #RAXMLNG
-raxml_model: "GTR{scripts/notr_model.txt}+R4"
+raxml_model: "GTR{../scripts/notr_model.txt}+R4"
 raxml_seed: "777"
 
 #SCORE CALCULATION

@@ -17,12 +17,12 @@ nt_norms:
 
 
 #IQ-TREE
-iqtree_ancestral_model: "scripts/notr_model.txt"
+iqtree_ancestral_model: "../scripts/notr_model.txt"
 #iqtree_ancestral_model: GTR+G
 iqtree_seed: "777"
 
 #RAXMLNG
-raxml_model: "GTR{scripts/notr_model.txt}+R4"
+raxml_model: "GTR{../scripts/notr_model.txt}+R4"
 raxml_seed: "777"
 
 
