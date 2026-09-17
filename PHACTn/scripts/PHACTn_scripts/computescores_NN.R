@@ -281,11 +281,14 @@ position_score <- function(ps, x, msa, num_nodes, num_leaves, total_pos, human_p
   #diversity <- (-(length(which(score_without_leaf<0.0001))*0.1)/4+0.1)*(sum_exc_max)
   
   scores <- list()
-  #scores$score_with_leaf <- 1- log((score)/(num_nodes+num_leaves)+10^(-15))/log(10^(-15))
-  #scores$score_without_leaf <- 1- log((score_without_leaf)/num_nodes + 10^(-15))/log(10^(-15))
+
+  # RAW SCORES
   scores$score_with_leaf <- score/(num_nodes+num_leaves)
   scores$score_without_leaf <- score_without_leaf/num_nodes
   
+  # TRANSFORMED SCORES (0-1)
+  #scores$score_with_leaf <- 1- log((score)/(num_nodes+num_leaves)+10^(-10))/log(10^(-10))
+  #scores$score_without_leaf <- 1- log((score_without_leaf)/num_nodes + 10^(-10))/log(10^(-10))
   return(scores)
   
 }
