@@ -1,0 +1,23 @@
+# Snakemake runtime artifacts
+.snakemake/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# R
+*.Rhistory
+*.RData
+
+# Results (pipeline outputs)
+results/
+mirna_score_results/
+
+# Logs
+logs/
+*.log
+
+# Conda environments (built by Snakemake)
+.conda/

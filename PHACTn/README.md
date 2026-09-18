@@ -1,6 +1,6 @@
 # PHylogeny-Aware Computation of Tolerance for Nucleotide Substitutions (PHACTn)
 
-This folder contains PHACTn, a modular Snakemake-based pipeline implementing PHACTn (Phylogeny-Aware Computing of Tolerance for nucleotide variants), a training-free, parameter-minimal method for inferring the tolerability of single-nucleotide variants across the genome.
+This folder contains PHACTn, a modular Snakemake-based pipeline implementing PHACTn (Phylogeny-Aware Computing of Tolerance for nucleotide variants), a training-free, parameter-minimal method for inferring the tolerability of single-nucleotide variants across the genome (Yildirim, et al., 2026).
 
 PHACTn extends the principles of the original PHACT framework (Kuru et al., 2022), previously designed for missense/amino-acid substitutions, to the nucleotide level. It traverses a phylogenetic tree and explicitly models the evolutionary independence of observed nucleotide substitutions and their distance from the query species, so that a single ancestral mutation shared by many descendants is not overcounted relative to several independent substitutions at the same position. Ancestral state probabilities are combined with a gap-aware correction — reconstructed separately from a binary (gap/character) encoding of the alignment — so that positions where an indel is the more likely ancestral event are not forced into misleading nucleotide probabilities.
 
@@ -9,7 +9,7 @@ The pipeline integrates phylogenetic tree structure, gap-aware ancestral state p
 There are **two** Snakemake workflows in this directory:
 
 * **`workflow_orthologs`** — scores a miRNA multiple sequence alignment built from that miRNA's orthologs across 114 species, using a consensus species tree as the phylogenetic backbone (see `construct_consensus/` for how the underlying species tree is derived).
-* **`workflow_targets`** — genome-wide scoring of genomic target positions: scores a UCSC whole-genome-alignment block (e.g. a genomic window around a miRNA target site) against a single fixed reference tree (470 mammals).
+* **`workflow_targets`** — genome-wide scoring of genomic target positions, as described in the PHACTn manuscript (Yildirim et al., 2026). Scores a UCSC whole-genome-alignment block (e.g. a genomic window around a miRNA target site) against a single fixed reference tree (470 mammals).
 
 __________________________
 
@@ -38,7 +38,7 @@ __________________________
 
 ![PHACTn Workflow orthologs](images/workflow_orthologs.png)
 
-Scores a multiple sequence alignment of one-to-one orthologs against a species tree, using RAxML-NG for ancestral reconstruction and the same gap-aware correction as `workflow_targets`. The reference topology is a fixed consensus tree (`consensus_timetree.nwk`, built from TimeTree/MirGeneDB species lists — see `construct_consensus/`), which RAxML-NG re-optimizes as a constraint tree per alignment.
+Scores a multiple sequence alignment of one-to-one orthologs against a species tree, using RAxML-NG for ancestral reconstruction and the same gap-aware correction described above. The reference topology is a fixed consensus tree (`consensus_timetree.nwk`, built from TimeTree/MirGeneDB species lists — see `construct_consensus/`), which RAxML-NG re-optimizes as a constraint tree per alignment.
 
 **1) Configure your workflow:**
 
@@ -58,9 +58,9 @@ Edit `config/config_orthologs.yaml` to set paths, filenames, and parameters.
 
 `alignment_pattern`: Path template for the per-query alignment files (Clustal `.aln` format); `{query_id}` is substituted per query.
 
-`nt_norms`: List of nucleotide-score normalization modes to run (`NN`: normalized by number of tree nodes, `FN`: normalized by query-nucleotide frequency in the alignment) — one output set per entry.
+`nt_norms`: List of score normalization modes to run, one output set per entry. (`NN`:  divides by the number of tree nodes `(num_nodes + num_leaves)` for `_wl_` scores, `num_nodes` for `_wol_` socres; `FN`: divides by the number of species that carry the same nucleotide as the query species at that alignment position.)
 
-`raxml_model`: RAxML-NG substitution model used for both tree search and ancestral reconstruction (e.g. `GTR{scripts/notr_model.txt}+R4`).
+`raxml_model`: RAxML-NG substitution model used for both tree search and ancestral reconstruction (e.g. `GTR{../scripts/notr_model.txt}+R4`).
 
 `raxml_seed`: Seed for RAxML-NG reproducibility.
 
@@ -95,7 +95,8 @@ total                                    9
 **3) Run workflow**
 
 ```
-snakemake --keep-going --rerun-incomplete --jobs 64 --use-conda
+conda activate PHACTn
+snakemake --keep-going --rerun-incomplete --jobs 64 
 ```
 
 **Output directories**
@@ -129,7 +130,7 @@ Converts the Clustal alignment to FASTA (U→T), drops alignment columns that ar
 
 Tool: RAxML-NG (`raxml-ng --search --tree-constraint`)
 
-The fixed consensus tree only provides topology (the branching order/clades), not branch lengths suited to this specific alignment. This rule keeps that topology fixed and runs an ML tree search constrained to it, so RAxML-NG estimates new branch lengths for this alignment on the consensus tree's clades — effectively grafting alignment-specific branch lengths onto the shared species-tree topology.
+The consensus tree (`consensus_timetree.nwk`) only defines which species group together; its branch lengths are not fitted to this alignment. This rule runs an ML tree search in RAxML-NG with the consensus tree as a topological constraint (`--tree-constraint`), so the resulting tree is compatible with the consensus clades while its branch lengths, and any unresolved branching, are estimated from this specific alignment. 
 
 **input:** `{query_id}/1_preProcessing/{query_id}_filtered_nogap.fasta`, `consensus_tree`.
 
@@ -139,7 +140,7 @@ The fixed consensus tree only provides topology (the branching order/clades), no
 
 Script: `../scripts/unroot_tree.R`
 
-Unroots the branch-length-optimized tree from `constrained_tree` with the `ape` R package.
+Unroots the branch-length-optimized tree `.raxml.bestTree` with the `ape` R package.
 
 **input:** `{query_id}/1_preProcessing/{query_id}.raxml.bestTree`
 
@@ -151,7 +152,7 @@ Unroots the branch-length-optimized tree from `constrained_tree` with the `ape` 
 
 Tool: RAxML-NG (`raxml-ng --ancestral`)
 
-Runs nucleotide ancestral state reconstruction on the filtered alignment and unrooted, branch-length-optimized tree from step 1.
+Runs nucleotide ancestral state reconstruction to infer the inner node probabilities on the filtered alignment and unrooted, branch-length-optimized tree from step 1.
 
 **input:** `{query_id}/1_preProcessing/{query_id}_filtered_nogap.fasta`, `{query_id}/1_preProcessing/{query_id}.bestTree_unrooted`
 
@@ -163,7 +164,7 @@ Runs nucleotide ancestral state reconstruction on the filtered alignment and unr
 
 Tool: RAxML-NG (`raxml-ng --ancestral --model BIN`)
 
-Runs ancestral reconstruction on the binary (gap/no-gap) alignment from `preprocess`, using a 2-state model and reusing the topology and branch lengths from the nucleotide ancestral tree (`--opt-branches off`, so only ancestral states are inferred, not new branch lengths).
+Runs ancestral reconstruction on the binary (gap/no-gap) alignment from `preprocess`, using the topology of the nucleotide ancestral tree. `--model BIN` automatically determines the best-fit model for each alignment using an information criterion, therefore the selected model can differ between alignments. This is intentional because gaps for missing species are inserted manually, so the true gap/no-gap ratio varies per ortholog set and a fixed 50/50 assumption, as used in the workflow_targets, would fit the data poorly. 
 
 **input:** `{query_id}/1_preProcessing/{query_id}_filtered_nogap.fasta_Binary`, `{query_id}/2_raxmlng_ancestral/{query_id}.raxml.ancestralTree`
 
@@ -185,7 +186,7 @@ Combines the nucleotide ancestral probabilities (step `2_asr.smk`) with the gap 
 
 **Rule `compute_scores_gapAware`**
 
-🛠 Script: `../scripts/PHACTn_scripts/computescores_{nt_norm}.R` (e.g. `computescores_NN.R`, `computescores_FN.R`)
+Script: `../scripts/PHACTn_scripts/computescores_{nt_norm}.R` (e.g. `computescores_NN.R`, `computescores_FN.R`)
 
 Computes final site-wise nucleotide scores from the gap-aware posterior probabilities, once per `nt_norm` entry, using `Hsa (human)` as the fixed reference/query species code.
 
@@ -219,7 +220,7 @@ Edit `config/config_targets.yaml`.
 
 `query_species`: Reference/query species ID in the alignment (e.g. `hg38`), used when computing scores.
 
-`nt_norms`: List of nucleotide-score normalization modes to run — one output set is produced per entry (`NN` and `FN` by default; see `scripts/PHACTn_scripts/`).
+`nt_norms`: List of score normalization modes to run, one output set per entry.(`NN` and `FN` by default; see `scripts/PHACTn_scripts/`).
 
 `iqtree_ancestral_model` / `iqtree_seed`: Substitution model and seed for the nucleotide ASR step.
 
@@ -254,7 +255,8 @@ total                                    9
 **3) Run workflow**
 
 ```
-snakemake --keep-going --rerun-incomplete --jobs 64 --use-conda
+pip install snakemake
+snakemake --keep-going --rerun-incomplete --jobs 64 --use-conda --conda-frontend conda
 ```
 
 **Output directories**
@@ -324,7 +326,7 @@ Converts the filtered alignment into a binary presence/absence encoding (`1` = A
 
 Tool: IQ-TREE 2 (`-asr -blfix -m JC2`)
 
-Runs ancestral reconstruction on the binary (gap/no-gap) alignment from `binary_msa`, reusing the topology and branch lengths from the nucleotide ancestral tree (`-blfix`, so only ancestral states are inferred, not new branch lengths) with a 2-state Jukes-Cantor model.
+Runs ancestral reconstruction on the binary (gap/no-gap) alignment from `binary_msa`, reusing the topology and branch lengths from the nucleotide ancestral tree (`-blfix`, so only ancestral states are inferred, not new branch lengths) with a 2-state Jukes-Cantor model (JC2). JC2 fixes the gap/no-gap frequencies to 0.5/0.5, and no model selection is performed. This differs from `workflow_orthologs`, where the binary step selects the best-fit model per alignment (see `3_asr_binary.smk` in that workflow).
 
 **input:** `{query_id}/1_preprocessed/block-{query_id}.fasta_Binary`, `{query_id}/2_iqtree_ancestral/{query_id}.treefile`
 
@@ -401,3 +403,5 @@ __________________________
 ### References
 
 Kuru, N., Dereli, O., Akkoyun, E., Bircan, A., Tastan, O., & Adebali, O. (2022). PHACT: Phylogeny-aware computing of tolerance for missense mutations. Molecular Biology and Evolution. https://doi.org/10.1093/molbev/msac114
+
+Yildirim, C., Kuru, N., & Adebali, O. (2026). PHACTn enables training-free, context-independent inference of nucleotide variant tolerance across the genome. bioRxiv. https://doi.org/10.64898/2026.09.08.750126

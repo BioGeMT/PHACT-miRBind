@@ -24,7 +24,6 @@ rule binary_asr:
             --msa {input.msa_binary} \
             --tree {input.ancestralTree} \
             --model BIN \
-            --opt-branches off \
             --prefix {params.raxml_ancestral_out_name} \
             --force perf_threads --seed {config[raxml_seed]} &&
         echo "`date -R`: {rule} ended successfully!" ||
