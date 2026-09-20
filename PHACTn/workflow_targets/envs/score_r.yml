@@ -1,0 +1,12 @@
+name: score_r
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - r-base=4.4
+  - r-ape
+  - r-tidytree
+  - r-stringr
+  - r-dplyr
+  - r-bio3d

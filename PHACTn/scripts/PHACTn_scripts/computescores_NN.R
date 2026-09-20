@@ -1,0 +1,416 @@
+#!/usr/bin/env Rscript
+
+
+#cran_mirror <- "https://cran.gedik.edu.tr/"
+#options(repos = c(CRAN = cran_mirror))
+
+# Load required libraries
+#if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  #install.packages("BiocManager")
+#}
+
+#BiocManager::install("ape")
+#BiocManager::install("tidytree")
+#BiocManager::install("stringr")
+#BiocManager::install("dplyr")
+#BiocManager::install("bio3d")
+library(ape)
+library(tidytree)
+library(stringr)
+library(dplyr)
+library(bio3d)
+
+args = commandArgs(trailingOnly=TRUE)
+
+nt_to_num <- function(nt) {
+  nucleotides <- c("A", "T", "G", "C")
+  nt <- toupper(nt)
+  num <- sapply(nt, function(n){ifelse(sum(nucleotides %in% n) == 1, as.numeric(which(nucleotides %in% n)), 5)})
+  return(num)
+}
+
+num_to_nt <- function(num) {
+  nucleotides <- c("A", "T", "G", "C")
+  nt <- ifelse(num == 5, 5, nucleotides[num])
+  return(nt)
+}
+
+compute_score <- function(file_nwk, file_rst, file_fasta, output_name, human_id, pos_chosen, parameters) {
+  
+  # Read tree file
+  tr_org <- read.tree(file_nwk)
+  x <- read.table(file = file_rst, sep = '\t', header = TRUE, fill = TRUE)
+  colnames(x)[4:ncol(x)] <- gsub("p_", replacement = "", x = colnames(x)[4:ncol(x)], fixed = TRUE )
+  x[,1] <- str_remove(x[,1], "Node")
+  
+  # Tree_info: node-node, node-leaf connections
+  tree_info <- as.data.frame(as_tibble(tr_org))
+  
+  # Read fasta file, MSA
+  fasta <- read.fasta(file = file_fasta)
+  msa <- fasta$ali
+  
+  # connections_1: Parent node, connections_2: connected node/leaf
+  connections_1 <- tree_info$parent
+  connections_2 <- tree_info$node
+  
+  # Names of leaves
+  names_all <- tr_org[["tip.label"]]
+  msa <- msa[names_all, ]
+  # Number of total leaves&nodes
+  num_leaves <- length(tr_org[["tip.label"]])
+  num_nodes <- tr_org[["Nnode"]]
+  
+  # Unnecessary
+  num_nodes_codeml <- max(connections_1,connections_2)
+  if (num_nodes_codeml-num_leaves != num_nodes){
+    print("Number of nodes is less than expected: CODEML")
+  }
+  
+  # Distance between leaves & nodes
+  dd_node <- dist.nodes(tr_org)
+  dist_leaf <- dd_node[1:num_leaves, 1:num_leaves]
+  dist_node <- dd_node[(num_leaves+1):(num_leaves + num_nodes), (num_leaves+1):(num_leaves + num_nodes)]
+  
+  # Human position (leaf & node)
+  h_name <- human_id
+  human_codeml <- names_all[grep(pattern = h_name, x = names_all, fixed = TRUE)]
+  leaf_human <- tree_info[which(tree_info$label == human_codeml), "node"]
+  human_plc <- leaf_human
+  node_human <- tree_info[which(tree_info$label == human_codeml), "parent"]
+  nodes_raxml <- as.numeric(gsub(pattern = "Node", replacement = "", x = tree_info[num_leaves+1:num_nodes, "label"])) #Node or Branch
+  names(nodes_raxml) <- tree_info[num_leaves+1:num_nodes, "node"]
+  
+  # Total number of positions from ancestralProbs file
+  total_pos <- max(x$Site)
+  
+  # Chosen positions (all or some)
+  if (pos_chosen[1] == "all"){
+    positions <- 1:total_pos
+    score_all <- matrix(0, total_pos, 5)
+  } else {
+    positions <- pos_chosen
+    score_all <- matrix(0, length(positions), 5)
+  }
+  
+  ####################################################
+  ####################################################
+  
+  # Connections between leaves & nodes
+  chosen_leaves <- tree_info[1:num_leaves,c("parent", "node")]
+  # Connections between nodes & nodes
+  chosen_nodes <- tree_info[(num_leaves+2):(num_leaves +num_nodes),c("parent", "node")]
+  leaf_names <- tree_info$label
+  
+  human_leaf_len <- as.double(tree_info[human_plc, "branch.length"])
+  
+  if (num_nodes == 1) {
+    d_n <- dist_node + human_leaf_len
+  } else {
+    d_n <- dist_node[as.character(node_human),] + human_leaf_len
+  }
+  
+  d_l <- dist_leaf[leaf_human,]
+  
+  # chosen_nodes2: ordered connections (for probability differences)
+  chosen_nodes2 <- matrix(0, num_nodes-1, 2)
+  
+  n1 <- as.numeric(chosen_nodes$parent)
+  n2 <- as.numeric(chosen_nodes$node)
+  dist_f <- d_n[as.character(n1)]
+  dist_s <- d_n[as.character(n2)]
+  
+  # chosen_nodes2: ordered connections (for probability differences)
+  chosen_nodes2[which(dist_f < dist_s), 1] <- n2[which(dist_f < dist_s)]
+  chosen_nodes2[which(dist_f < dist_s), 2] <- n1[which(dist_f < dist_s)]
+  
+  chosen_nodes2[which(dist_f >= dist_s), 1] <- n1[which(dist_f >= dist_s)]
+  chosen_nodes2[which(dist_f >= dist_s), 2] <- n2[which(dist_f >= dist_s)]
+  
+  ###########################################################################
+  ###############      NEW PART - 15NOV                      ################
+  ###########################################################################
+  
+  # Number of nodes between nodes & leaf of human
+  nodes_conn <- numeric(num_nodes)
+  nodes_conn[node_human-num_leaves] <- 1
+  names(nodes_conn) <- names(d_n)
+  chs <- c()
+  chs2 <- c()
+  ##########################
+  inds <- chosen_nodes2[chosen_nodes2[,2]==(node_human),1]
+  nodes_conn[as.character(inds)] <- 2
+  chs <- inds
+  
+  s0 <- sapply(3:num_leaves, function(i){
+    for (j in chs){
+      inds <- chosen_nodes2[chosen_nodes2[,2]==j,1]
+      if (length(inds)!=0){
+        nodes_conn[as.character(inds)] <<- i
+        chs2 <- c(chs2, inds)
+      }
+    }
+    chs <<- chs2
+    chs2 <- c()
+  })
+  
+  # Number of nodes between leaves & leaf of human
+  if (num_nodes == 1) {
+    leaves_conn <- nodes_conn*matrix(1, 1, num_leaves)
+  } else {
+    leaves_conn <- nodes_conn[as.character(chosen_leaves[,1])]
+  }
+  
+  
+  #########################################
+  
+  parameters <- unlist(str_split(parameters, pattern = ","))
+  
+  score_norm <- t(mapply(function(ps, parameter){position_score(ps, x, msa, num_nodes, num_leaves, total_pos, human_plc, node_human, nodes_raxml, human_leaf_len, dist_node, dist_leaf, parameter, leaves_conn, nodes_conn, chosen_leaves, chosen_nodes2, d_n, d_l)}, rep(positions, length(parameters)), rep(parameters, each = length(positions))))
+  
+  score_norm_with_leaf <- matrix(unlist(score_norm[ ,1]), nrow = length(positions) * length(parameters), ncol = 4, byrow = TRUE)
+  score_norm_without_leaf <- matrix(unlist(score_norm[ ,2]), nrow = length(positions) * length(parameters), ncol = 4, byrow = TRUE)
+  
+  score_norm_with_leaf <- cbind(rep(positions, length(parameters)), score_norm_with_leaf)
+  score_norm_without_leaf <- cbind(rep(positions, length(parameters)), score_norm_without_leaf)
+  
+  colnames(score_norm_with_leaf) <- c("Pos/NT", num_to_nt(1:4))
+  colnames(score_norm_without_leaf) <- c("Pos/NT", num_to_nt(1:4))
+  
+  print_wl <- lapply(1:length(parameters), function(p){
+    score_to_print_wl <- score_norm_with_leaf[(positions + length(positions)*(p - 1)), ]
+    score_to_print_wol <- score_norm_without_leaf[(positions + length(positions)*(p - 1)), ]
+    filename <- ifelse(parameters[p] == "0", "max05", parameters[p])
+    filename <- ifelse(parameters[p] == "X", "max05_Gauss", parameters[p]) ### New Line (11.11)
+    write.csv(score_to_print_wl, sprintf("%s.csv", paste(output_name, "_wl_param_", filename, sep = "")), row.names = FALSE, quote = FALSE)
+    write.csv(score_to_print_wol, sprintf("%s.csv", paste(output_name, "_wol_param_", filename, sep = "")), row.names = FALSE, quote = FALSE)
+  })
+  
+}
+
+
+  
+position_score <- function(ps, x, msa, num_nodes, num_leaves, total_pos, human_plc, node_human, nodes_raxml, human_leaf_len, dist_node, dist_leaf, parameter, leaves_conn, nodes_conn, chosen_leaves, chosen_nodes2, d_n, d_l) {
+  position <- ps
+  
+  b1 <- position + total_pos*(0:(num_nodes-1))
+  TT <- x[b1,]
+  
+  node_info <- as.numeric(TT[,1])
+  sort_node_info <- sort(node_info, decreasing = F, index.return=T)
+  TT <- TT[sort_node_info$ix,]
+  
+  matrix_prob <- matrix(0, num_nodes, 4)
+  
+  probs <- data.matrix((TT[, (4:ncol(TT))]))
+  rownames(probs) <- NULL
+  rr <- nt_to_num(colnames(x)[4:ncol(TT)])
+  matrix_prob[,rr] <- probs
+  matrix_prob <- matrix_prob[nodes_raxml,]
+  
+  position_vec <- msa[, ps]
+  
+  position_num <- nt_to_num(position_vec)
+  prob_leaves <- matrix(0, num_leaves, 4)
+  prob_leaves[cbind(which(position_num <= 4), position_num[which(position_num <= 4)])] <- 1
+  
+  gaps <- which(position_num == 5)
+  
+  diff_leaves <- matrix(0, num_leaves, 4)
+  if (num_nodes == 1) {
+    diff_leaves <- prob_leaves - do.call(rbind, replicate(num_leaves, matrix_prob, simplify=FALSE))
+    diff_nodes <- matrix(0, 1, 4)
+    vect_human <- matrix_prob
+  } else {
+    diff_leaves <- prob_leaves - matrix_prob[(chosen_leaves$parent - num_leaves), ]
+    diff_nodes <- matrix(0, num_nodes-1, 4)
+    diff_nodes <- matrix_prob[chosen_nodes2[,1] - num_leaves, ] - matrix_prob[chosen_nodes2[,2] - num_leaves, ]
+    vect_human <- matrix_prob[node_human - num_leaves,]
+  }
+  diff_leaves[human_plc,]<- -diff_leaves[human_plc,]
+  
+  ################## weights
+  weights <- weight_fnc(d_n, d_l, human_plc, parameter, leaves_conn, nodes_conn, mxx) # Updated with related parameters
+  weight_leaf <- weights[1:num_leaves]
+  weight_node <- tail(weights,num_nodes)
+  ####################
+  
+  
+  score <- matrix(0,1,4)
+  
+  if (num_nodes != 1) {
+    s1 <- sapply(1:4, function(ii){
+      if (num_nodes == 2) {
+        dif_pr <- diff_nodes[ii]
+      } else {
+        dif_pr <- diff_nodes[1:(num_nodes-1),ii]
+      }
+      dif_pr[dif_pr<0] <- 0
+      # CHANGED 29.03
+      sel_node <- chosen_nodes2[1:length(dif_pr), 1] - num_leaves
+      score[ii] <<- score[ii] + sum(weight_node[sel_node] * dif_pr)
+    })
+  }
+  
+  ### NOVEL 29.03
+  nt_f <- position_num[human_plc]
+  if (nt_f != 5) {
+    vect_human[nt_f]<-0
+  }
+  
+  score_without_leaf <- score
+  score_without_leaf <- score_without_leaf + weight_node[(node_human-num_leaves)]*vect_human
+  score <- score + weight_node[(node_human-num_leaves)]*vect_human
+  
+  s2 <- sapply(1:4, function(ii){
+    diff_lf <- diff_leaves[1:num_leaves,ii]
+    diff_lf[gaps] <-  0
+    diff_lf[diff_lf<0] <- 0
+    
+    s1 <- sum(weight_leaf[((1:length(diff_lf)) != human_plc )] * diff_lf[((1:length(diff_lf)) != human_plc )])
+    score[ii] <<- score[ii] + s1
+  })
+  
+  nt_f <- position_num[human_plc]
+  if (nt_f != 5){
+    score[nt_f] <- score[nt_f] + weight_leaf[human_plc]*1
+    score_without_leaf[nt_f] <- score_without_leaf[nt_f] + weight_leaf[human_plc]*1
+  }
+  
+  #sum_exc_max <- sum(score_without_leaf)-max(score_without_leaf)
+  #diversity <- (-(length(which(score_without_leaf<0.0001))*0.1)/4+0.1)*(sum_exc_max)
+  
+  scores <- list()
+
+  # RAW SCORES
+  scores$score_with_leaf <- score/(num_nodes+num_leaves)
+  scores$score_without_leaf <- score_without_leaf/num_nodes
+  
+  # TRANSFORMED SCORES (0-1)
+  #scores$score_with_leaf <- 1- log((score)/(num_nodes+num_leaves)+10^(-10))/log(10^(-10))
+  #scores$score_without_leaf <- 1- log((score_without_leaf)/num_nodes + 10^(-10))/log(10^(-10))
+  return(scores)
+  
+}
+
+
+weight_fnc <- function(d_n, d_l, human_plc, parameter, leaves_conn, nodes_conn, mxx) {
+  # print(parameter)
+  if (parameter=="0"){
+    d_l_n <- d_l[-human_plc]
+    min_l <- min(d_l_n)
+    d_l2 <- d_l/min_l
+    d_n2 <- d_n/min_l
+    
+    d_l2 <- d_l2 +1
+    d_n2 <- d_n2 +1
+    weight_node <- 1/d_n2
+    weight_leaf <- 1/d_l2
+    
+  } else if (parameter=="0_MinNode"){
+    d_l_n <- d_l[-human_plc]
+    min_l <- min(d_n)
+    d_l2 <- d_l/min_l
+    d_n2 <- d_n/min_l
+    
+    d_l2 <- d_l2 +1
+    d_n2 <- d_n2 +1
+    weight_node <- 1/d_n2
+    weight_leaf <- 1/d_l2
+    
+  } else if (parameter=="0_MinNode_Mix"){
+    d_l_n <- d_l[-human_plc]
+    min_l <- min(d_n)
+    d_l2 <- d_l/min_l
+    d_n2 <- d_n/min_l
+    
+    d_l2 <- d_l2 +1
+    d_n2 <- d_n2 +1
+    weight_node1 <- 1/d_n2
+    weight_leaf1 <- 1/d_l2
+    
+    param <- mean(c(d_n, d_l))
+    weight_leaf2 <- exp(-d_l^2/param^2)
+    weight_node2 <- exp(-d_n^2/param^2)
+    
+    weight_node<-sqrt(weight_node1*weight_node2)
+    weight_leaf<-sqrt(weight_leaf1*weight_leaf2)
+    
+  } else if (parameter=="0_MinNode_Mix2"){
+    d_l_n <- d_l[-human_plc]
+    min_l <- min(d_n)
+    d_l2 <- d_l/min_l
+    d_n2 <- d_n/min_l
+    
+    d_l2 <- d_l2 +1
+    d_n2 <- d_n2 +1
+    weight_node1 <- 1/d_n2
+    weight_leaf1 <- 1/d_l2
+    
+    param <- mean(c(d_n, d_l))
+    weight_leaf2 <- exp(-d_l^2/param^2)/2
+    weight_node2 <- exp(-d_n^2/param^2)/2
+    
+    weight_node<-sqrt(weight_node1*weight_node2)
+    weight_leaf<-sqrt(weight_leaf1*weight_leaf2)
+    
+  } else if (parameter == "mean"){
+    param <- mean(c(d_n, d_l))
+    weight_leaf <- exp(-d_l^2/param^2)
+    weight_node <- exp(-d_n^2/param^2)
+  } else if (parameter == "median"){
+    param <- median(c(d_n, d_l))
+    weight_leaf <- exp(-d_l^2/param^2)
+    weight_node <- exp(-d_n^2/param^2)
+  } else if (parameter == "X"){
+    d_l_n <- d_l[-human_plc]
+    min_l <- min(d_l_n)
+    min_n <- min(d_n)
+    min_ch <- min(min_l, min_n)
+    d_l2 <- d_l-min_ch
+    d_n2 <- d_n-min_ch
+    weight_leaf <- exp(-d_l^2)/2
+    weight_node <- exp(-d_n^2)/2
+    weight_leaf[human_plc] <- 1
+  } else if (parameter == "CountNodes_1"){      ### NewFunction 1 (15Nov)
+    weight_node = (exp(-d_n^2) + 1/nodes_conn)/2
+    weight_leaf = (exp(-d_l^2) + 1/leaves_conn)/2
+  } else if (parameter == "CountNodes_2"){      ### NewFunction 2 (15Nov)
+    weight_node = (exp(-d_n^2) + exp(-nodes_conn^2))/2
+    weight_leaf = (exp(-d_l^2) + exp(-leaves_conn^2))/2
+  } else if (parameter == "CountNodes_3"){      ### NewFunction 3 (15Nov)
+    weight_node = sqrt(exp(-d_n^2)*1/nodes_conn)
+    weight_leaf = sqrt(exp(-d_l^2)*1/leaves_conn)
+  } else if (parameter == "CountNodes_4"){      ### NewFunction 4 (15Nov)
+    weight_node = exp(-(sqrt(d_n*nodes_conn))^2)
+    weight_leaf = exp(-(sqrt(d_l*leaves_conn))^2)
+  } else if (parameter == "Equal"){
+    
+    weight_leaf <- matrix(1,1,length(d_l))
+    weight_node <- matrix(1,1,length(d_n))
+    
+  } else if (parameter == "MinThreshold"){
+    max_dis <- max(c(d_l, d_n))
+    param_min <- as.double(param_min)    
+    weight_node <- (-1+param_min)/max_dis*d_n + 1
+    weight_leaf <- (-1+param_min)/max_dis*d_l + 1
+  } else if (parameter == "MinThreshold_Gauss"){
+    max_dis <- max(c(d_l, d_n))
+    param_min <- as.double(param_min)
+    param <- sqrt(-max_dis^2/log(param_min))
+    
+    weight_leaf <- exp(-d_l^2/param^2)
+    weight_node <- exp(-d_n^2/param^2)
+    
+  } else {
+    param <- as.double(parameter)
+    weight_leaf <- exp(-d_l^2/param^2)
+    weight_node <- exp(-d_n^2/param^2)
+  }
+  weights = c(weight_leaf, weight_node)
+  
+  
+  return(weights)
+}
+
+csv_file <- compute_score(file_nwk=args[1],file_rst=args[2],file_fasta=args[3], output_name=args[4],human_id=args[5],'all', parameters = args[6])  

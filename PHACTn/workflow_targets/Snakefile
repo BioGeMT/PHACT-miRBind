@@ -1,13 +1,13 @@
-configfile: "../config/config_orthologs.yaml"
+configfile: "../config/config_targets.yaml"
 workdir: config["workdir"]
-config["result_dir"] = f"{config['workdir']}/{config['score_result_dirname']}"
+config["result_dir"] = f"{config['workdir']}/{config['result_dirname']}"
 
-
-include: "rules/1_preprocessing.smk"
-include: "rules/2_asr.smk"
-include: "rules/3_asr_binary.smk"
-include: "rules/4_gapAware_probas.smk"
-include: "rules/5_gapAware_scores.smk"
+include: "rules/1_preprocess.smk"
+include: "rules/2_ASRstep.smk"
+include: "rules/3_BINARYmsa.smk"
+include: "rules/3_BINARYstep.smk"
+include: "rules/4_GapAWAREstep.smk"
+include: "rules/5_GapAWAREscore.smk"
 
 
 all_nt_norms = config["nt_norms"]
@@ -18,15 +18,16 @@ with open(query_ids_file) as f:
 
 rule all:
     input:
-        expand("{result_dir}/{query_id}/PHACTn_gapAware_scores_{nt_norm}/{query_id}_wl_param_{pattern}.csv",
+        expand("{result_dir}/{query_id}/4_gapAware_scores_{nt_norm}/{query_id}_wl_param_{pattern}.csv",
                result_dir=config["result_dir"],
                query_id=query_ids,
                pattern=config["pattern"],
                nt_norm=all_nt_norms
               ),
-        expand("{result_dir}/{query_id}/PHACTn_gapAware_scores_{nt_norm}/{query_id}_wol_param_{pattern}.csv",
+        expand("{result_dir}/{query_id}/4_gapAware_scores_{nt_norm}/{query_id}_wol_param_{pattern}.csv",
                result_dir=config["result_dir"],
                query_id=query_ids,
                pattern=config["pattern"],
                nt_norm=all_nt_norms
-              ),
+              )
+

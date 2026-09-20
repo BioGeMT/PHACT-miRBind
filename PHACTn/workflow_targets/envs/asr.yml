@@ -1,0 +1,7 @@
+name: iqtree_asr
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - iqtree=2.3.6
