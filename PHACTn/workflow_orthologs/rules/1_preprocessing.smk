@@ -32,7 +32,7 @@ rule preprocess:
         echo "`date -R`: {rule} ended successfully!" ||
          {{ echo "`date -R`: {rule} failed..."; exit 1; }}  )  >> {log} 2>&1
 
-        if [ ! -s {output} ]; then
+        if [ ! -s {output.nt_out} ] || [ ! -s {output.binary_out} ]; then
             echo "`date -R`: output is empty. Exiting..." >> {log}
             exit 1
         fi
