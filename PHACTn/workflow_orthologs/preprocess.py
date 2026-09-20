@@ -83,7 +83,7 @@ def add_missing_tree_species(alignment: MultipleSeqAlignment, tree_file: str) ->
     alignment_length = alignment.get_alignment_length()
     gap_records = [
         SeqRecord(Seq("-" * alignment_length), id=species_code, description="")
-        for species_code in missing_species
+        for species_code in sorted(missing_species)
     ]
 
     return MultipleSeqAlignment(list(alignment) + gap_records)

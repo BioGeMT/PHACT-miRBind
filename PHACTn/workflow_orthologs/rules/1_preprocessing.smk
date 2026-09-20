@@ -62,7 +62,7 @@ rule constrained_tree:
 
         raxml-ng --search \
          --msa {input.complete_msa} \
-         --tree-constraint {params.consensus_tree} \
+         --tree-constraint {params.consensus_tree} --seed {config[raxml_seed]} \
          --prefix {params.out_name} --model {config[raxml_model]} --extra seq-allgap-keep --extra seq-dup-keep --redo &&
 
 
