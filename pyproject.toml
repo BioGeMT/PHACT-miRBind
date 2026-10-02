@@ -1,7 +1,7 @@
 [project]
 name = "phact-mirbind"
 version = "0.1.0"
-description = "miRBind pairwise CNN baselines with conservation data utilities"
+description = "PHACT-augmented miRNA binding models and score-cache utilities"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -13,9 +13,6 @@ dependencies = [
     "transformers>=5.13.1",
 ]
 
-[project.optional-dependencies]
-analysis = ["matplotlib>=3.8", "scipy>=1.11", "pillow>=10", "duckdb"]
-
 [project.scripts]
 build-conservation-cache = "phact_mirbind.cli.build_conservation_cache:main"
 build-pair-cache = "phact_mirbind.cli.build_pair_cache:main"
@@ -26,6 +23,7 @@ train-phact-mirbind = "phact_mirbind.cli.train_phact:main"
 train-rinalmo-phact-mirbind = "phact_mirbind.cli.train_rinalmo_phact:main"
 train-seq-mirbind = "phact_mirbind.cli.train_seq:main"
 predict-seq-mirbind = "phact_mirbind.cli.predict_seq:main"
+predict-phact-mirbind = "phact_mirbind.cli.predict_phact:main"
 
 [dependency-groups]
 dev = [

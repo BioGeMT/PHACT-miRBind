@@ -1,183 +1,114 @@
 # PHACT-miRBind
 
-This repo contains four runnable miRBind-style model families:
-
-- `PairwiseSeqCNN`: the seq-only pairwise CNN baseline with the original
-  28x50 miRNA/target pair grid and 147,249 default parameters.
-- `PairwiseConservationCNN`: the same pair-grid CNN with target-position
-  `phyloP`, `phastCons`, or both appended as extra channels before the first
-  convolution.
-- `PairwisePhactCNN`: the pair-grid CNN augmented with position-specific PHACT
-  channels from the miRNA, target, or both axes.
-- `PairwiseRinalmoPhactFusion`: one shared, fully fine-tuned RiNALMo-micro
-  backbone for the miRNA and target, PHACT-conditioned top-layer mixing and
-  positional pooling, and a frozen pretrained miRBind branch fused before
-  binary classification.
-
-The original PHACTn workflows are kept under `PHACTn/`. The PyTorch cache,
-training, and model implementations are under `src/phact_mirbind/`.
-
-The exact five-model PHACT consensus parameter-1 release for miRBench v7,
-including data preparation, training order, inference, and artifact validation,
-is documented in [`mirbench_v7_param1/README.md`](mirbench_v7_param1/README.md).
-
-The five published models are three PHACT-P1 CNN variants and two Agentomics
-fusion models. The fully fine-tuned RiNALMo model above is a separate
-experimental model family. The fixed September positional-control study and
-final report scripts are documented under [reproduction/](reproduction/README.md).
+Implementation of PHACT nucleotide scoring, miRNA alignment, and PHACT-augmented
+miRNA–target binding models.
 
 ## Layout
 
-```text
-src/phact_mirbind/
-  cli/          command-line entry points
-  data/         TSV row parsing, sequence normalization, pair encoding
-  cache/        .pt cache writers, manifests, iterable datasets
-  models/       sequence, conservation, PHACT CNNs, and RiNALMo fusion
-  training/     shared train/eval loop, metrics, logging
-```
+- [`PHACTn/`](PHACTn/README.md): original PHACTn scoring workflows and configurations.
+- [`mirna_alignment/`](mirna_alignment/README.md): orthologue retrieval, precursor processing, alignments and trees.
+- `phact_mirbind/`: PHACT CNN and RiNALMo–PHACT fusion implementations, cache readers/writers, training and prediction.
+- `agentomics/`: single-candidate, layer-mix and multi-candidate PHACT fusion implementations with their training and inference code.
 
-## Setup
+The PHACT CNN supports miRNA-only, target-only or combined score channels.
+Shared sequence-only and conservation CNN classes remain because the PHACT
+models reuse their architecture and pretrained branches. Model implementations
+and input representations are preserved; weights and datasets are supplied
+externally.
 
-```bash
-cd PHACT-miRBind
-uv sync --locked --extra analysis
-export PHACT_WORKSPACE=/path/to/phact
-```
+## PHACTn and alignment
 
-On node 4, the workspace is `/SCRATCH/dtzim01/phact`. Keep the checkout on
-main and store inputs, caches, checkpoints, and figures in that workspace.
-Shell training workflows require `PHACT_WORKSPACE`; their new outputs go
-under `models/new/`. Python CLIs take explicit input/output paths.
+Follow the environment and workflow instructions in the respective directory
+READMEs. Their implementation files are retained unchanged.
 
-Use unique output directories for experiments. The retained release and fixed
-follow-up directories are historical evidence, not destinations for new runs.
-
-## Cache
-
-Seq-only training uses a neutral pair cache:
+## Binding-model setup
 
 ```bash
-uv run build-pair-cache \
-  --input-file "$PHACT_WORKSPACE/datasets/splits/manakov_original_rows/manakov_original_rows_train.tsv" \
-  --output-dir "$PHACT_WORKSPACE/models/caches/pair_cache_original_rows/train" \
-  --output-prefix train
+uv sync --locked
 ```
 
-Conservation training uses a pair + conservation cache:
+The root environment covers `phact_mirbind/`. The Agentomics environment is
+recorded in `agentomics/model5/environment.yml`.
+
+## Interaction-array input
+
+All PHACT trainers accept a CSV or TSV with one row per interaction. Arrays are
+written as `[0.2,NaN,0.8,...]` inside cells. CSV writers must quote array cells;
+TSV writers do not need to quote commas. Missing whole tracks can be empty or
+all-NaN arrays. The reader also accepts `null` entries.
+
+| Columns | Contents |
+| --- | --- |
+| `id` | Optional unique row ID; defaults to the 1-based input row number |
+| `gene` | Target sequence, exactly 50 nucleotides |
+| `noncodingRNA` | Mature miRNA sequence (`mirna` is also accepted) |
+| `label` | 0 or 1 |
+| `mirna_phact_A`, `mirna_phact_C`, `mirna_phact_G`, `mirna_phact_T` | Four P1 score arrays, each matching the mature sequence length, or already padded to 28 positions |
+| `target_phact_A`, `target_phact_C`, `target_phact_G`, `target_phact_T` | Four target score arrays, each 50 positions; targets do not have a P1 parameter |
+| `gene_phyloP`, `gene_phastCons` | Native target conservation arrays, each 50 positions |
+| `feature`, `dominant_region` | Optional metadata used by Agentomics; absent categories become `NA` |
+
+Array positions follow the corresponding sequence from left to right. Scores
+must already use the intended normalization/transformation; the loaders do not
+transform PHACT scores again. Prepared P1 data uses transformed wtNT miRNA scores
+and the latest mapped transformed target scores. U is converted to T. miRNAs
+are padded or truncated to 28 positions together with their scores. At a missing
+PHACT position, all four nucleotide entries must be NaN. Core CNN inputs use 0.5
+for missing scores plus an explicit missingness mask, including padded positions.
+Agentomics retains its own fitted preprocessing and missingness masks.
 
 ```bash
-uv run build-conservation-cache \
-  --input-file "$PHACT_WORKSPACE/datasets/splits/manakov_original_rows/manakov_original_rows_train.tsv" \
-  --output-dir "$PHACT_WORKSPACE/models/caches/conservation_cache_original_rows/train" \
-  --output-prefix train \
-  --conservation-features phylop,phastcons
+uv run train-phact-mirbind \
+  --train-file /path/to/train.csv \
+  --val-file /path/to/validation.csv \
+  --phact-channel-mode both \
+  --output-dir /path/to/training-output
 ```
 
-`phyloP` is normalized as `clamp(score / 10, -1, 1)`. `phastCons` is used as
-provided, with missing values filled as `0.5`.
+Use `--phact-channel-mode mirna`, `target` or `both`. Only the selected score
+axes are required. phyloP/phastCons columns may remain in the table for all
+models. To include those target tracks in a PHACT CNN or RiNALMo fusion, add
+`--conservation-features phylop,phastcons`; core compact inputs use
+`clip(phyloP/10,-1,1)` and native phastCons, with separate missingness masks.
+The default PHACT models use sequence and their selected PHACT channels.
 
-PHACT cache construction keeps the neutral score fill used by earlier runs and
-also stores one binary missingness channel per PHACT score group. Newly built
-caches append those masks to the model input, allowing a model to distinguish a
-real neutral score from an unavailable score. Caches produced before this
-addition remain readable and simply omit the mask channels.
+`--test-file` and `--leftout-file` are optional final evaluation inputs. Validation
+selects checkpoints. Tables are validated and converted to reusable tensor
+shards automatically under `OUTPUT_DIR/input_cache`; `--input-cache-dir` can
+share that directory across runs. Input content and representation settings
+identify caches. Length errors, partial score quartets, duplicate IDs, infinite
+scores and invalid labels are rejected.
 
-## Train
+The RiNALMo trainer accepts the same file arguments and still requires
+`--mirbind-checkpoint`. Agentomics training entry points accept the same CSV/TSV
+paths with their existing `--train-data` and `--validation-data` arguments.
+Install this repository into their Python environment using
+`pip install --no-deps -e /path/to/PHACT-miRBind`. They prepare their split
+representation under an `agentomics_input_cache` beside the output artifacts.
+Their pretrained checkpoint arguments remain required. A flat interaction row
+supplies one profile per miRNA; the multi-candidate architecture uses that one
+candidate. Existing split-folder input preserves multiple locus candidates.
 
-Run the seq-only baseline:
+## Existing cache input and prediction
+
+Build a compact cache from a Manakov-format row TSV and two row-position score
+TSVs. Supply both score-table paths explicitly; the miRNA table contains named
+PHACT nucleotide-score columns, while targets may use `score_A/C/G/T` columns.
 
 ```bash
-scripts/run_seq_original_split_params.sh
+uv run build-phact-cache   --input-file /path/to/train.tsv   --output-dir /path/to/cache/train   --output-prefix train   --phact-split train   --phact-models param_1   --target-phact-models target_score   --mirna-phact-file /path/to/mirna_row_scores.tsv   --target-phact-file /path/to/target_row_scores.tsv
+
+uv run train-phact-mirbind   --train-cache /path/to/cache/train   --val-cache /path/to/cache/val   --test-cache /path/to/cache/test   --leftout-cache /path/to/cache/leftout   --phact-channel-mode both   --output-dir /path/to/training-output
+
+uv run predict-phact-mirbind   --checkpoint /path/to/model.pt   --cache /path/to/cache/test   --output /path/to/predictions.npz
 ```
 
-Run the conservation-channel model:
+Use `--phact-channel-mode mirna` or `target` to select a single score axis.
+Missing-score masks and historical caches without masks are supported. Prediction
+reads the checkpoint's channel configuration. Run each command with `--help`
+for its complete input and model options.
 
-```bash
-scripts/run_conservation_original_split_params.sh
-```
-
-Use only one conservation source by setting `CONSERVATION_FEATURES`:
-
-```bash
-CONSERVATION_FEATURES=phylop scripts/run_conservation_original_split_params.sh
-CONSERVATION_FEATURES=phastcons scripts/run_conservation_original_split_params.sh
-```
-
-Build and train the PHACT-channel model:
-
-```bash
-PHACT_MODELS=CountNodes_3 scripts/build_phact_full_cache.sh
-PHACT_MODELS=CountNodes_3 scripts/train_phact_full_cache.sh
-```
-
-`train-phact-mirbind --phact-channel-mode` selects `mirna`, `target`, or
-`both`. `--phact-reduction` on cache construction selects the full nucleotide
-scores, `actual_margin`, or `alt_mean` representation.
-
-`--initial-checkpoint-mode widen` function-preservingly initializes a wider
-filter stack from `--initial-checkpoint`; keep the embedding dimension and
-input PHACT channel count unchanged, and only increase `--filter-sizes`.
-`--additional-train-cache` may be repeated to mix compatible training-only
-caches. `--training-target-shift-max N` applies neutral-padded target-axis
-translation augmentation only to training batches. Noisy sampled negatives can
-be studied without relabeling through `--negative-label-smoothing` or
-`--focal-gamma`; both default to ordinary binary cross-entropy behavior.
-
-### Fully fine-tune RiNALMo-micro
-
-The RiNALMo fusion model consumes the compact per-position tensors from an
-existing PHACT cache. It recovers both nucleotide streams from the cached pair
-grid, so old caches do not need to be rebuilt. It fine-tunes all RiNALMo layers
-with a lower, layer-wise-decayed learning rate while training the PHACT pooling
-and fusion head at a higher learning rate. The supplied miRBind checkpoint is
-kept frozen and in evaluation mode.
-
-```bash
-uv run train-rinalmo-phact-mirbind \
-  --train-cache "$PHACT_WORKSPACE/models/p1-training/cache/param_1_target_score/train" \
-  --val-cache "$PHACT_WORKSPACE/models/p1-training/cache/param_1_target_score/val" \
-  --test-cache "$PHACT_WORKSPACE/models/p1-training/cache/param_1_target_score/test" \
-  --leftout-cache "$PHACT_WORKSPACE/models/p1-training/cache/param_1_target_score/leftout" \
-  --mirbind-checkpoint "$PHACT_WORKSPACE/models/baselines/main_repo_outputs/seq_only/pairwise_seq_model_20260629_201939.pt" \
-  --output-dir "$PHACT_WORKSPACE/models/new/rinalmo_finetune" \
-  --gradient-checkpointing \
-  --progress-bar
-```
-
-`--additional-train-cache` may be repeated; compatible shard lists are mixed as
-one training dataset while validation, test, and leftout remain unchanged.
-`--encoding-mode cross` places both RNAs in one RiNALMo context so attention can
-cross molecules. `--initial-checkpoint` starts a new run from a prior full
-RiNALMo-PHACT checkpoint, which is useful for a conservative augmentation
-fine-tune. `--phact-baseline-checkpoint` turns the new head into a zero-initialized
-residual correction on top of an existing PHACT CNN; pair it with
-`--freeze-rinalmo` for a lower-risk, faster head-only experiment.
-
-Defaults are RiNALMo-micro, BF16 on CUDA, a `2e-6` top-backbone learning rate,
-`0.85` layer-wise decay, PHACT-conditioned mixing of the top four layers, a
-`1e-4` fusion-head learning rate, and gradient-norm clipping at `1.0`. Use
-`--no-bfloat16` when the selected GPU does not support BF16. The pretrained
-model is downloaded automatically by Hugging Face on the first run; the current
-local cache uses about 128 MB.
-
-`multimolecule` provides the maintained Hugging Face conversion used here and
-is AGPL-3.0 licensed. The original RiNALMo implementation is Apache-2.0 and its
-published pretrained weights are CC BY 4.0; check those terms before
-redistributing a trained derivative or packaging this code into another
-service.
-
-Cache-building workflows use `datasets/original/` or `datasets/splits/` for source rows
-and `models/caches/` for new caches inside the workspace. The original P1 run
-keeps its own cache and prepared-data subdirectories together for provenance.
-
-## Data workspace and retained analyses
-
-Keep large inputs and generated results in a separate workspace. Set
-`PHACT_WORKSPACE` before using the shell workflows; new runs go under
-`$PHACT_WORKSPACE/models/new`. The retained follow-up and final-analysis scripts
-are documented in [reproduction/README.md](reproduction/README.md).
-
-The target-score builder requires explicit train/test/leftout, raw target-score,
-and output paths. The legacy evaluation helper requires `--results-dir`,
-`--eval-dir`, and `--output-dir`; neither assumes an old home data directory.
+The separate `train-rinalmo-phact-mirbind` command implements RiNALMo fusion;
+`agentomics/` contains the standalone Agentomics training and inference entry
+points. The shared sequence and conservation cache/training commands remain
+available for their baseline components.
