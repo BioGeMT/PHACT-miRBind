@@ -14,6 +14,9 @@ dependencies = [
 ]
 
 [project.scripts]
+prepare-cv-folds = "phact_mirbind.cli.prepare_cv:main"
+build-cv-cache = "phact_mirbind.cli.build_cv_cache:main"
+train-cv-mirbind = "phact_mirbind.cli.train_cv:main"
 build-conservation-cache = "phact_mirbind.cli.build_conservation_cache:main"
 build-pair-cache = "phact_mirbind.cli.build_pair_cache:main"
 build-phact-cache = "phact_mirbind.cli.build_phact_cache:main"
