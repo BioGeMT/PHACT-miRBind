@@ -32,82 +32,6 @@ from phact_mirbind.training.logging import (
 from phact_mirbind.training.metrics import average_precision
 
 
-def load_widened_state_dict(
-    model: nn.Module,
-    source_state_dict: Mapping[str, torch.Tensor],
-) -> None:
-    """Load a narrower compatible model while preserving its initial function.
-
-    Existing output units are copied exactly. Connections from newly added
-    input units into existing output units start at zero, while newly added
-    output units keep their random initialization. This supports widening CNN
-    filter stacks without discarding a trained checkpoint.
-    """
-
-    target_state_dict = model.state_dict()
-    if target_state_dict.keys() != source_state_dict.keys():
-        missing = sorted(source_state_dict.keys() - target_state_dict.keys())
-        extra = sorted(target_state_dict.keys() - source_state_dict.keys())
-        raise ValueError(
-            f"Incompatible state dictionaries; missing={missing}, extra={extra}"
-        )
-
-    widened_state_dict: dict[str, torch.Tensor] = {}
-    for name, target in target_state_dict.items():
-        source = source_state_dict[name]
-        if source.ndim != target.ndim or any(
-            source_size > target_size
-            for source_size, target_size in zip(source.shape, target.shape)
-        ):
-            raise ValueError(
-                f"Cannot widen {name} from {tuple(source.shape)} "
-                f"to {tuple(target.shape)}"
-            )
-        if source.shape == target.shape:
-            widened_state_dict[name] = source
-            continue
-
-        widened = target.clone()
-        if widened.ndim >= 2:
-            widened[: source.shape[0]].zero_()
-        source_slices = tuple(slice(0, size) for size in source.shape)
-        widened[source_slices] = source
-        widened_state_dict[name] = widened
-
-    model.load_state_dict(widened_state_dict, strict=True)
-
-
-def configure_new_input_channels_only(
-    model: nn.Module,
-    source_state_dict: Mapping[str, torch.Tensor],
-) -> int:
-    """Freeze a widened model except for newly appended first-conv inputs."""
-    parameter_name = "conv_layers.0.weight"
-    parameters = dict(model.named_parameters())
-    if parameter_name not in parameters or parameter_name not in source_state_dict:
-        raise ValueError(f"Missing required parameter: {parameter_name}")
-    parameter = parameters[parameter_name]
-    source = source_state_dict[parameter_name]
-    if parameter.ndim != 4 or source.ndim != 4:
-        raise ValueError("first convolution weights must be four-dimensional")
-    if parameter.shape[1] <= source.shape[1]:
-        raise ValueError("model has no newly appended first-convolution inputs")
-    if (
-        parameter.shape[0] != source.shape[0]
-        or parameter.shape[2:] != source.shape[2:]
-    ):
-        raise ValueError("first convolution changed beyond its input channels")
-
-    for candidate in model.parameters():
-        candidate.requires_grad_(False)
-    parameter.requires_grad_(True)
-    mask = torch.zeros_like(parameter)
-    mask[:, source.shape[1] :] = 1
-    parameter.register_hook(lambda gradient: gradient * mask)
-    model._keep_frozen_modules_in_eval = True
-    return int(mask.sum().item())
-
-
 def run_epoch(
     model: nn.Module,
     loader: DataLoader,
@@ -124,10 +48,6 @@ def run_epoch(
     grad_clip_norm: float | None = None,
 ) -> dict[str, float]:
     model.train(optimizer is not None)
-    if optimizer is not None and getattr(model, "_keep_frozen_modules_in_eval", False):
-        for module in model.modules():
-            if isinstance(module, (nn.modules.batchnorm._BatchNorm, nn.Dropout)):
-                module.eval()
     total_loss = 0.0
     batch_count = 0
     sample_count = 0
@@ -423,19 +343,9 @@ def expected_batch_count(loader: DataLoader, sample_count: int | None) -> int | 
     return math.ceil(sample_count / batch_size)
 
 
-def resolve_device(device_name: str) -> torch.device:
-    if device_name == "auto":
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    return torch.device(device_name)
-
-
 def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-
-
-def parse_int_tuple(value: str) -> tuple[int, ...]:
-    return tuple(int(part.strip()) for part in value.split(",") if part.strip())

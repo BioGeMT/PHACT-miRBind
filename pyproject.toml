@@ -5,28 +5,16 @@ description = "PHACT-augmented miRNA binding models and score-cache utilities"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "multimolecule>=0.2.0",
     "numpy>=1.26",
     "pandas>=2.2",
     "scikit-learn>=1.4",
     "torch>=2.2",
-    "transformers>=5.13.1",
 ]
 
 [project.scripts]
 prepare-cv-folds = "phact_mirbind.cli.prepare_cv:main"
 build-cv-cache = "phact_mirbind.cli.build_cv_cache:main"
 train-cv-mirbind = "phact_mirbind.cli.train_cv:main"
-build-conservation-cache = "phact_mirbind.cli.build_conservation_cache:main"
-build-pair-cache = "phact_mirbind.cli.build_pair_cache:main"
-build-phact-cache = "phact_mirbind.cli.build_phact_cache:main"
-split-original-rows = "phact_mirbind.cli.split_rows:main"
-train-conservation-mirbind = "phact_mirbind.cli.train_conservation:main"
-train-phact-mirbind = "phact_mirbind.cli.train_phact:main"
-train-rinalmo-phact-mirbind = "phact_mirbind.cli.train_rinalmo_phact:main"
-train-seq-mirbind = "phact_mirbind.cli.train_seq:main"
-predict-seq-mirbind = "phact_mirbind.cli.predict_seq:main"
-predict-phact-mirbind = "phact_mirbind.cli.predict_phact:main"
 
 [dependency-groups]
 dev = [
