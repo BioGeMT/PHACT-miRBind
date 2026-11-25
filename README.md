@@ -132,6 +132,16 @@ This SD describes fold variation; it is not a confidence interval. Training sets
 overlap, and the original leftout observations repeat across runs. The pooled
 original test is now part of cross-validation, not a separate untouched test.
 
+`predict-cv-mirbind` applies a saved checkpoint to a CSV in the interaction-array
+format above; `label` is not needed. It reads the variant and architecture from
+the checkpoint, encodes inputs as the cache does, uses BF16 on CUDA as in
+training, and writes a TSV with `id` and `probability`.
+
+```bash
+uv run predict-cv-mirbind --checkpoint /path/to/best_model.pt \
+  --input /path/to/interactions.csv --output /path/to/predictions.tsv
+```
+
 Run the focused input, split and training checks with:
 
 ```bash

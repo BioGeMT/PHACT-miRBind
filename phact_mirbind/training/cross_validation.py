@@ -46,21 +46,55 @@ def make_model(variant, seed, device="cuda"):
     return model.to(device)
 
 
-def predict(model, loader, device, amp_dtype):
+def load_model(checkpoint_path, device):
+    """Rebuild a saved five-fold model from its checkpoint and return it with its variant."""
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    variant = checkpoint["summary"]["model_type"]
+    if variant not in {"seq_only", "target_phact"}:
+        raise ValueError(f"Unknown model variant: {variant}")
+    params = {
+        name: tuple(value) if isinstance(value, list) else value
+        for name, value in checkpoint["model_params"].items()
+    }
+    model_class = PairwisePhactCNN if variant == "target_phact" else PairwiseSeqCNN
+    model = model_class(**params)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    return model.to(device), variant
+
+
+def bf16_dtype(device):
+    """Return the autocast dtype of the training protocol: BF16 on CUDA, none on CPU."""
+    if device.type != "cuda":
+        return None
+    if not torch.cuda.is_bf16_supported():
+        raise RuntimeError("This protocol requires BF16 support on CUDA devices")
+    return torch.bfloat16
+
+
+def predict_probabilities(model, input_batches, device, amp_dtype):
     model.eval()
     probabilities = []
-    labels = []
     with torch.inference_mode():
-        for batch in loader:
-            *x, y = batch
+        for x in input_batches:
             with autocast_context(device, amp_dtype):
                 logits = model(*x)
             # Same probability calculation as stable training.loop.run_epoch.
             p = torch.sigmoid(logits).float()
             assert torch.isfinite(p).all()
             probabilities.append(p.cpu().numpy())
+    return np.concatenate(probabilities)
+
+
+def predict(model, loader, device, amp_dtype):
+    labels = []
+
+    def inputs():
+        for *x, y in loader:
             labels.append(y.cpu().numpy())
-    return np.concatenate(labels), np.concatenate(probabilities)
+            yield x
+
+    probabilities = predict_probabilities(model, inputs(), device, amp_dtype)
+    return np.concatenate(labels), probabilities
 
 
 def train_fold(
@@ -80,11 +114,8 @@ def train_fold(
         )
     variant = inputs.variant
     device = inputs.device
-    amp_dtype = None
+    amp_dtype = bf16_dtype(device)
     if device.type == "cuda":
-        if not torch.cuda.is_bf16_supported():
-            raise RuntimeError("CUDA training requires BF16 support for this protocol")
-        amp_dtype = torch.bfloat16
         torch.backends.cudnn.benchmark = True
     run_name = f"{variant}/fold_{fold}"
     indices = {

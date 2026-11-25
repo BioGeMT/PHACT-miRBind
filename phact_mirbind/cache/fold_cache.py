@@ -41,6 +41,23 @@ def target_scores(row):
     ).astype(np.float16)
 
 
+def model_inputs(mirna_bases, target_bases, target_scores=None):
+    """Return the pair grid and, for target-PHACT, the score channels broadcast over the miRNA axis."""
+    pairs = mirna_bases[:, :, None] * 4 + target_bases[:, None, :]
+    pairs.masked_fill_(
+        (mirna_bases[:, :, None] >= 4) | (target_bases[:, None, :] >= 4),
+        PADDING_PAIR_INDEX,
+    )
+    if target_scores is None:
+        return (pairs,)
+    scores = (
+        target_scores.permute(0, 2, 1)
+        .unsqueeze(2)
+        .expand(-1, -1, mirna_bases.shape[1], -1)
+    )
+    return pairs, scores
+
+
 def prepare_training_cache(data_root: Path, folds_dir: Path, output_dir: Path) -> Path:
     """Write one reusable cache for all five runs, without expanding pair grids."""
     root = Path(data_root).resolve()
@@ -246,20 +263,10 @@ class FoldInputs:
         m = self.mirna_bases[self.row_mirna[indices].long()].long()
         target_rows = self.row_target[indices].long()
         t = self.target_bases[target_rows].long()
-        pairs = m[:, :, None] * 4 + t[:, None, :]
-        pairs.masked_fill_(
-            (m[:, :, None] >= 4) | (t[:, None, :] >= 4), PADDING_PAIR_INDEX
-        )
-        labels = self.labels[indices]
-        if self.variant == "seq_only":
-            return pairs, labels
-        scores = (
-            self.target_scores[target_rows]
-            .permute(0, 2, 1)
-            .unsqueeze(2)
-            .expand(-1, -1, 28, -1)
-        )
-        return pairs, scores, labels
+        scores = None
+        if self.variant == "target_phact":
+            scores = self.target_scores[target_rows]
+        return (*model_inputs(m, t, scores), self.labels[indices])
 
 
 class FoldBatches:

@@ -15,6 +15,7 @@ dependencies = [
 prepare-cv-folds = "phact_mirbind.cli.prepare_cv:main"
 build-cv-cache = "phact_mirbind.cli.build_cv_cache:main"
 train-cv-mirbind = "phact_mirbind.cli.train_cv:main"
+predict-cv-mirbind = "phact_mirbind.cli.predict_cv:main"
 
 [dependency-groups]
 dev = [
